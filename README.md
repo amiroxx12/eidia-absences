@@ -1,7 +1,5 @@
 # 📱 Notification des Parents sur les Absences
 
-![Architecture](https://img.shields.io/badge/Architecture-MVC-green)
-
 > **Projet EIDIA 2026** - Système intelligent d'import de CSV et de notifications multi-canaux (WhatsApp & Email).
 
 🫵🏻 **Ce Markdown est écrit pour les développeurs** 🫵🏻 
