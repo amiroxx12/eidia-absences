@@ -7,20 +7,25 @@ on:
 
 jobs:
   deploy:
-    name: 🚀 Deploy to Google Cloud
+    name: 🚀 Deploy to Google Cloud (Debian)
     runs-on: ubuntu-latest
 
     steps:
-    - name: 📥 Récupération du code (Checkout)
-      uses: actions/checkout@v3
+    - name: 📥 Récupération du code
+      uses: actions/checkout@v4
 
-    - name: 🚚 Transfert des fichiers (SCP)
+    - name: 🚚 Transfert SCP
       uses: appleboy/scp-action@master
       with:
+        # Configuration de connexion (via Secrets GitHub)
         host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
+        username: ${{ secrets.SSH_USER }}       # Cela correspondra à 'amr'
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
+        
+        # Dossiers
         source: "."
         target: "/var/www/eidia-absences.com/public_html/"
-        rm: true # Cleans the folder before upload to avoid conflicts
+        
+        # Options de nettoyage
+        rm: true   # Supprime les anciens fichiers pour éviter les conflits
