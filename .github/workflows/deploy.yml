@@ -23,6 +23,4 @@ jobs:
         port: 22
         source: "."
         target: "/var/www/eidia-absences.com/public_html/"
-        # On exclut le dossier .github pour ne pas l'envoyer sur le serveur
-        rm: false
-        strip_components: 0
+        rm: true # Cleans the folder before upload to avoid conflicts
