@@ -1,0 +1,9 @@
+.DS_Store
+Thumbs.db
+config/config.php
+vendor/
+public/uploads/*
+!public/uploads/.gitkeep
+.idea/
+.vscode/
+*.swp
