@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Technique - Projet Notification Absences</title>
+    <style>
+        /* --- DESIGN SYSTÈME --- */
+        :root {
+            --primary: #2563eb;       /* Bleu vif */
+            --secondary: #475569;     /* Gris texte */
+            --bg-sidebar: #f8fafc;    /* Gris très clair */
+            --bg-code: #1e293b;       /* Fond sombre pour code */
+            --accent: #0ea5e9;        /* Bleu ciel */
+            --success: #10b981;       /* Vert */
+            --warning: #f59e0b;       /* Orange */
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        /* --- SIDEBAR --- */
+        aside {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem;
+            position: fixed;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        aside h3 {
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+        }
+
+        aside ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        aside li { margin-bottom: 0.8rem; }
+
+        aside a {
+            text-decoration: none;
+            color: var(--secondary);
+            font-weight: 500;
+            transition: 0.2s;
+            display: block;
+            padding: 0.5rem;
+            border-radius: 6px;
+        }
+
+        aside a:hover {
+            background: #e0f2fe;
+            color: var(--primary);
+        }
+
+        /* --- CONTENU PRINCIPAL --- */
+        main {
+            margin-left: 280px;
+            padding: 4rem 6rem;
+            flex: 1;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-top: 4rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-top: 2.5rem;
+        }
+
+        p { margin-bottom: 1.5rem; font-size: 1.05rem; }
+
+        /* --- BOITES SPÉCIALES --- */
+        .card-infra {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-infra h3 { color: #38bdf8; margin-top: 0; }
+        .card-infra code { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .note {
+            background-color: #f0f9ff;
+            border-left: 4px solid var(--primary);
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin: 2rem 0;
+        }
+        
+        .note-warning {
+            background-color: #fffbeb;
+            border-left: 4px solid var(--warning);
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin: 2rem 0;
+            color: #92400e;
+        }
+
+        /* --- ARBORESCENCE & CODE --- */
+        pre {
+            background-color: var(--bg-code);
+            color: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.95rem;
+            border: 1px solid #334155;
+        }
+
+        code {
+            font-family: 'Consolas', monospace;
+            background: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #d946ef;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .tree-line { line-height: 1.4; color: #94a3b8; }
+        .tree-folder { color: #facc15; font-weight: bold; } /* Jaune */
+        .tree-file { color: #e2e8f0; }
+
+        /* --- TABLEAUX --- */
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.8rem; text-align: left; }
+        th { background: #f8fafc; font-weight: 600; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 900px) {
+            aside { display: none; }
+            main { margin-left: 0; padding: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside>
+        <h3>Menu Projet</h3>
+        <ul>
+            <li><a href="#infra">1. Infrastructure & Cloud</a></li>
+            <li><a href="#workflow">2. Méthode de Travail</a></li>
+            <li><a href="#arborescence">3. Structure des Dossiers</a></li>
+            <li><a href="#etapes">4. Plan d'Action</a></li>
+            <li><a href="#techno">5. Technologies</a></li>
+            <li><a href="#phpmyadmin">6. Base de Données</a></li>
+        </ul>
+    </aside>
+
+    <main>
+        <header>
+            <h1>Projet : Notification Absences</h1>
+            <p>Guide technique et organisationnel pour l'équipe de développement.</p>
+        </header>
+
+        <section id="infra">
+            <h2>1. Infrastructure & Déploiement Automatique</h2>
+            
+            <div class="card-infra">
+                <h3>🚀 Serveur en Ligne & Opérationnel</h3>
+                <p>Pour gagner du temps, l'environnement de production est déjà configuré par Amr. Le projet est hébergé sur le <strong>Cloud (Google Cloud Platform)</strong> et est accessible mondialement.</p>
+                <p><strong>URL du projet :</strong> <a href="http://eidia-absences.duckdns.org" style="color:#38bdf8" target="_blank">http://eidia-absences.duckdns.org</a></p>
+                <p>Le nom de domaine est sécurisé et pointe directement sur notre serveur.</p>
+            </div>
+
+            <h3>La Magie du CI/CD (Comment le site se met à jour ?)</h3>
+            <p>Nous avons mis en place un système de <strong>CI/CD</strong> (Intégration Continue / Déploiement Continu). Pour faire simple, imaginez un robot invisible qui surveille notre code 24h/24.</p>
+            
+            <div class="note">
+                <strong>Comment ça marche ?</strong><br>
+                À chaque fois que vous envoyez votre code sur GitHub (<code>git push</code>), ce "robot" attrape vos modifications, court vers le serveur Google Cloud, et met à jour le site instantanément.
+                <br><br>
+                👉 <strong>Résultat :</strong> Pas besoin d'utiliser FileZilla ou de copier des fichiers manuellement. Tout est automatique. Le prof verra toujours la dernière version de notre travail.
+            </div>
+        </section>
+
+        <section id="workflow">
+            <h2>2. Méthode de Travail (Git)</h2>
+            <p>Pour que le "robot" CI/CD fonctionne sans tout casser, nous devons suivre une discipline stricte. Amr veillera à ce que les fusions (merges) soient propres, mais chacun doit respecter ces commandes.</p>
+
+            <h3>La Règle d'Or</h3>
+            <p>Avant de commencer à travailler sur une tâche, il faut toujours récupérer la dernière version du travail des autres pour éviter les conflits.</p>
+
+            <pre><code># 1. Avant de coder : Récupérer les nouveautés
+git pull --rebase
+
+# 2. Vous travaillez en local (sur votre machine)...
+# ... Modification des fichiers ...
+
+# 3. Envoyer votre travail
+git add .
+git commit -m "Description de ce que j'ai fait"
+git push</code></pre>
+        </section>
+
+        <section id="arborescence">
+            <h2>3. Architecture du Projet (MVC Simplifié)</h2>
+            <p>Pour ne pas se marcher dessus, chaque fichier a une place précise. Voici l'organisation des dossiers à respecter sur le dépôt :</p>
+
+            <pre><span class="tree-folder">/notification-parents</span>
+│
+├── <span class="tree-folder">config/</span>                  <span class="tree-line"># LA SALLE DES MACHINES</span>
+│   ├── <span class="tree-file">db.php</span>               <span class="tree-line"># Connexion Base de Données (PDO)</span>
+│   └── <span class="tree-file">config.php</span>           <span class="tree-line"># Clés API & Paramètres SMTP</span>
+│
+├── <span class="tree-folder">public/</span>                  <span class="tree-line"># LA VITRINE (Seul dossier visible web)</span>
+│   ├── <span class="tree-folder">assets/</span>
+│   │   ├── <span class="tree-file">style.css</span>        <span class="tree-line"># Design & CSS</span>
+│   │   └── <span class="tree-file">script.js</span>        <span class="tree-line"># JS Interactif</span>
+│   ├── <span class="tree-folder">uploads/</span>             <span class="tree-line"># Dossier temporaire des CSV</span>
+│   └── <span class="tree-file">index.php</span>            <span class="tree-line"># LE GARDIEN (Routeur unique)</span>
+│
+├── <span class="tree-folder">src/</span>                     <span class="tree-line"># LE CERVEAU (Logique PHP)</span>
+│   ├── <span class="tree-folder">Controllers/</span>         <span class="tree-line"># Ils dirigent les requêtes</span>
+│   │   ├── <span class="tree-file">AuthController.php</span>
+│   │   └── <span class="tree-file">ImportController.php</span>
+│   ├── <span class="tree-folder">Models/</span>              <span class="tree-line"># Ils parlent à la BDD (SQL)</span>
+│   │   └── <span class="tree-file">Absence.php</span>
+│   └── <span class="tree-folder">Services/</span>            <span class="tree-line"># Les Outils Techniques</span>
+│       ├── <span class="tree-file">CsvDetector.php</span>  <span class="tree-line"># Algo intelligent (Levenshtein)</span>
+│       └── <span class="tree-file">WhatsAppService.php</span>
+│
+└── <span class="tree-folder">templates/</span>               <span class="tree-line"># LE VISAGE (Vues HTML)</span>
+    ├── <span class="tree-file">header.php</span>
+    ├── <span class="tree-file">sidebar.php</span>
+    ├── <span class="tree-file">dashboard.php</span>
+    └── <span class="tree-file">login.php</span></pre>
+        </section>
+
+        <section id="etapes">
+            <h2>4. Ordre Chronologique des Tâches</h2>
+            <p>Nous allons procéder par étape logique. On ne passe pas à la suite tant que l'étape en cours n'est pas validée.</p>
+
+            <div style="border-left: 3px solid #cbd5e1; padding-left: 20px;">
+                
+                <h3>Étape 1 : Fondations (Terminé ✅)</h3>
+                <p>Mise en place du serveur GCP, Domaine DuckDNS, Base de données MySQL et structure Git. Le "squelette" est prêt.</p>
+
+                <h3>Étape 2 : Authentification & Design</h3>
+                <p>Création de l'interface graphique (HTML/CSS) et sécurisation de l'accès (Page Login). L'objectif est de pouvoir se connecter et voir un tableau de bord vide.</p>
+
+                <h3>Étape 3 : Le Cœur (Import CSV Intelligent)</h3>
+                <p>Développement de l'algorithme qui lit le fichier Excel/CSV, devine les colonnes (Nom, Prénom...) et injecte les données dans la base de données. C'est la partie la plus importante du projet.</p>
+
+                <h3>Étape 4 : Affichage des Données</h3>
+                <p>Une fois la base remplie, on code les tableaux pour visualiser les élèves, filtrer par classe ou par date d'absence sur le dashboard.</p>
+
+                <h3>Étape 5 : Les Canaux de Communication</h3>
+                <p>Connexion aux API externes. On branche le système pour que lorsqu'on clique sur "Notifier", un Email et un WhatsApp partent automatiquement aux parents.</p>
+
+            </div>
+        </section>
+
+        <section id="techno">
+            <h2>5. Stack Technique</h2>
+            <p>Pour rappel, voici les technologies validées pour ce projet :</p>
+            <ul>
+                <li><strong>Backend :</strong> PHP 8 (Natif, structuré MVC).</li>
+                <li><strong>Base de données :</strong> MySQL (Avec gestion tables dynamiques mensuelles).</li>
+                <li><strong>Frontend :</strong> HTML5, CSS3 (Responsive), JS (Chart.js pour les stats).</li>
+                <li><strong>APIs :</strong> Twilio (WhatsApp) & PHPMailer (SMTP).</li>
+            </ul>
+        </section>
+
+        <section id="phpmyadmin">
+            <h2>6. Base de Données (PhpMyAdmin)</h2>
+            <p>Pour gérer les données, nous utilisons <strong>PhpMyAdmin</strong>. C'est une interface graphique (comme un "Excel" en ligne) qui nous évite de taper des commandes complexes.</p>
+            
+            <p><strong>URL d'accès :</strong> <a href="http://eidia-absences.duckdns.org/phpmyadmin" target="_blank">http://eidia-absences.duckdns.org/phpmyadmin</a></p>
+
+            <h3>À quoi ça sert concrètement ?</h3>
+            <table>
+                <tr>
+                    <th>Utilisation</th>
+                    <th>Pourquoi on en a besoin ?</th>
+                </tr>
+                <tr>
+                    <td><strong>Vérifier l'import CSV</strong></td>
+                    <td>Quand vous codez l'import, PhpMyAdmin est le seul moyen fiable de vérifier si les données ont <em>réellement</em> été enregistrées dans la base.</td>
+                </tr>
+                <tr>
+                    <td><strong>Tester le SQL</strong></td>
+                    <td>Avant de mettre une requête complexe dans le code PHP (ex: statistiques), testez-la d'abord dans l'onglet "SQL" pour voir si elle marche.</td>
+                </tr>
+                <tr>
+                    <td><strong>Débogage</strong></td>
+                    <td>Si vous êtes bloqué hors du site (bug de login), vous pouvez modifier manuellement les utilisateurs directement dans la table.</td>
+                </tr>
+            </table>
+
+            <div class="note-warning">
+                <strong>⚠️ Règles importantes :</strong>
+                <ul>
+                    <li><strong>Ne modifiez pas la structure :</strong> Ne renommez jamais une colonne ou une table sans prévenir l'équipe, sinon le code PHP va planter ("Column not found").</li>
+                    <li><strong>Sauvegardez :</strong> Avant de faire une grosse modification risquée, utilisez l'onglet "Exporter" pour télécharger une sauvegarde `.sql`.</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.9rem; text-align: center;">
+            <p>Documentation Projet - Équipe Ekip - 2026</p>
+        </footer>
+    </main>
+
+</body>
+</html>
