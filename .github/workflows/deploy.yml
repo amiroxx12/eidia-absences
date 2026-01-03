@@ -1,0 +1,31 @@
+name: Déploiement Automatique (Prod)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to Google Cloud (Debian)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Récupération du code
+      uses: actions/checkout@v4
+
+    - name: 🚚 Transfert SCP
+      uses: appleboy/scp-action@master
+      with:
+        # Configuration de connexion (via Secrets GitHub)
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        
+        # Dossiers
+        source: "."
+        target: "/var/www/eidia-absences.com/public_html/"
+        
+        # Options de nettoyage (Supprime l'ancien code avant de mettre le nouveau)
+        rm: true
