@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projet EIDIA - Infrastructure Ready</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-width: 600px;
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+        }
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            background: #d4edda;
+            color: #155724;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        .features {
+            text-align: left;
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .feature-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        .icon { margin-right: 10px; font-size: 1.2em; }
+        .workflow {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #eee;
+            font-style: italic;
+            color: #666;
+        }
+        .github-btn {
+            display: inline-block;
+            background: #333;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        .github-btn:hover { transform: scale(1.05); }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="status-badge">✅ SYSTÈME OPÉRATIONNEL</div>
+        <h1>Infrastructure EIDIA Ready</h1>
+        <p>Le serveur est configuré, sécurisé et prêt pour le déploiement.</p>
+
+        <div class="features">
+            <div class="feature-item">
+                <span class="icon">☁️</span> <strong>Cloud :</strong> Google Compute Engine (e2-micro)
+            </div>
+            <div class="feature-item">
+                <span class="icon">🔒</span> <strong>Sécurité :</strong> HTTPS certifié par Let's Encrypt
+            </div>
+            <div class="feature-item">
+                <span class="icon">🐘</span> <strong>Stack :</strong> Apache2 + PHP + MariaDB
+            </div>
+            <div class="feature-item">
+                <span class="icon">🌍</span> <strong>DNS :</strong> Accessible via DuckDNS
+            </div>
+        </div>
+
+        <div class="workflow">
+            <h3>🚀 Workflow Prochainement activé :</h3>
+            <p>Push GitHub ➔ Déploiement Automatique (CI/CD) ➔ Live</p>
+            <p><em>Plus besoin de toucher au serveur manuellement !</em></p>
+        </div>
+
+        <a href="#" class="github-btn">Voir le Repo GitHub</a>
+    </div>
+
+</body>
+</html>
