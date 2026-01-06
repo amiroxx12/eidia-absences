@@ -1,9 +1,19 @@
+# Fichiers système Mac et Windows
 .DS_Store
 Thumbs.db
+
+# Configuration avec mots de passe (NE JAMAIS PUSH ÇA)
+config/db.php
 config/config.php
+
+# Dossiers générés ou temporaires
 vendor/
+node_modules/
+
+# Uploads (on garde le dossier mais pas les fichiers tests)
 public/uploads/*
 !public/uploads/.gitkeep
-.idea/
-.vscode/
-*.swp
+
+# Tes scripts d'organisation (optionnel, pour garder le repo propre)
+orga.sh
+orgaa.sh
