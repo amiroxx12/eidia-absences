@@ -299,37 +299,56 @@ git push</code></pre>
         </section>
 
         <section id="phpmyadmin">
-            <h2>6. Base de Données (PhpMyAdmin)</h2>
-            <p>Pour gérer les données, nous utilisons <strong>PhpMyAdmin</strong>. C'est une interface graphique (comme un "Excel" en ligne) qui nous évite de taper des commandes complexes.</p>
+            <h2>6. Base de Données & Gestion (IMPORTANT)</h2>
             
-            <p><strong>URL d'accès :</strong> <a href="http://eidia-absences.duckdns.org/phpmyadmin" target="_blank">http://eidia-absences.duckdns.org/phpmyadmin</a></p>
+            <div class="note-warning" style="border-left: 4px solid #f59e0b; background: #fffbeb; padding: 1.5rem; border-radius: 6px; margin-bottom: 2rem;">
+                <h3 style="color: #92400e; margin-top: 0;">⚠️ Stop : Lisez ceci avant de coder</h3>
+                <p>Une confusion fréquente est de croire que le lien PhpMyAdmin est "magique". Clarifions les choses :</p>
+                <ul>
+                    <li><strong>PhpMyAdmin N'EST PAS la base de données :</strong> C'est juste une lunette pour <em>regarder</em> ce qu'il y a dedans.</li>
+                    <li><strong>Il n'y a PAS de "synchronisation automatique" par le lien :</strong> Ce n'est pas parce que vous avez le lien ouvert que votre code PHP est connecté. Votre code PHP se connecte grâce au fichier <code>config/db.php</code>.</li>
+                </ul>
+            </div>
 
-            <h3>À quoi ça sert concrètement ?</h3>
+            <h3>1. L'Accès "Secret" (Pour nous uniquement)</h3>
+            <p>Nous n'utilisons pas l'interface standard. L'accès à la gestion de la base se fait via cette URL sécurisée :</p>
+            
+            <div class="card-infra" style="text-align: center;">
+                <p style="font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem;">
+                    🔗 <a href="http://eidia-absences.duckdns.org/base-secrete-ekip" target="_blank" style="color: #38bdf8; text-decoration: underline;">eidia-absences.duckdns.org/base-secrete-ekip</a>
+                </p>
+            </div>
+
+            <h3>2. Comment travailler avec la Base de Données ?</h3>
+            <p>Voici le workflow obligatoire pour éviter de tout casser :</p>
+
             <table>
                 <tr>
-                    <th>Utilisation</th>
-                    <th>Pourquoi on en a besoin ?</th>
+                    <th style="width: 30%;">Action</th>
+                    <th>Où ça se passe ?</th>
+                    <th>Explication</th>
                 </tr>
                 <tr>
-                    <td><strong>Vérifier l'import CSV</strong></td>
-                    <td>Quand vous codez l'import, PhpMyAdmin est le seul moyen fiable de vérifier si les données ont <em>réellement</em> été enregistrées dans la base.</td>
+                    <td><strong>1. Créer une table</strong></td>
+                    <td><span style="color: #d97706;">PhpMyAdmin (Le lien secret)</span></td>
+                    <td>Vous allez sur le lien, vous créez la table (ex: <code>eleves</code>) avec les colonnes nécessaires.</td>
                 </tr>
                 <tr>
-                    <td><strong>Tester le SQL</strong></td>
-                    <td>Avant de mettre une requête complexe dans le code PHP (ex: statistiques), testez-la d'abord dans l'onglet "SQL" pour voir si elle marche.</td>
+                    <td><strong>2. Connecter le Code</strong></td>
+                    <td><span style="color: #2563eb;">VS Code (config/db.php)</span></td>
+                    <td>On s'assure que le fichier <code>db.php</code> contient les bons identifiants. C'est le "câble" entre le site et le serveur.</td>
                 </tr>
                 <tr>
-                    <td><strong>Débogage</strong></td>
-                    <td>Si vous êtes bloqué hors du site (bug de login), vous pouvez modifier manuellement les utilisateurs directement dans la table.</td>
+                    <td><strong>3. Coder la logique</strong></td>
+                    <td><span style="color: #2563eb;">VS Code (src/Models)</span></td>
+                    <td>Dans vos fichiers PHP, vous écrivez le SQL. <br><em>Exemple :</em> Si vous avez créé une colonne <code>nom</code> dans PhpMyAdmin, votre code PHP doit faire <code>INSERT INTO eleves (nom)...</code>. Si vous changez le nom de la colonne dans PhpMyAdmin sans changer le code PHP, <strong>ça plante.</strong></td>
                 </tr>
             </table>
 
-            <div class="note-warning">
-                <strong>⚠️ Règles importantes :</strong>
-                <ul>
-                    <li><strong>Ne modifiez pas la structure :</strong> Ne renommez jamais une colonne ou une table sans prévenir l'équipe, sinon le code PHP va planter ("Column not found").</li>
-                    <li><strong>Sauvegardez :</strong> Avant de faire une grosse modification risquée, utilisez l'onglet "Exporter" pour télécharger une sauvegarde `.sql`.</li>
-                </ul>
+            <div class="note" style="margin-top: 2rem;">
+                <strong>💡 En résumé :</strong><br>
+                PhpMyAdmin sert à <strong>construire</strong> l'armoire (les tables).<br>
+                Le Code PHP sert à <strong>ranger</strong> les dossiers dedans (les données).
             </div>
         </section>
 
