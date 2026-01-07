@@ -14,6 +14,8 @@ node_modules/
 public/uploads/*
 !public/uploads/.gitkeep
 
-# Tes scripts d'organisation (optionnel, pour garder le repo propre)
-orga.sh
-orgaa.sh
+# Ignorer les vraies configs
+config/db.php
+config/config.php
+public/uploads/*
+!public/uploads/.gitkeep
