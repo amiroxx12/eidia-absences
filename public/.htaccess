@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    Options -MultiViews
+    RewriteEngine On
+    RewriteBase /eidia-absences/public/
+    
+    # Si le fichier ou dossier demandé n'existe pas physiquement
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    
+    # Tout rediriger vers index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
