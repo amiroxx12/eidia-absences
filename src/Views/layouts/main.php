@@ -9,7 +9,16 @@
           <a class="nav-link" href="<?= BASE_URL ?>/dashboard">Tableau de bord</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="<?= BASE_URL ?>/students">Étudiants</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="<?= BASE_URL ?>/import">Importer CSV</a>
+        </li>
+        <li class="nav-item">
+        <a class="nav-link" href="<?= BASE_URL ?>/import/absences">
+        <i class="fas fa-calendar-times"></i>
+        <span>Importer Absences</span>
+        </a>
         </li>
       </ul>
       

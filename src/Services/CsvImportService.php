@@ -100,20 +100,27 @@ class CsvImportService {
      * @param string $filePath Chemin du fichier
      * @param array $mapping Tableau [index_csv => colonne_bdd]
      * @param string $delimiter Le délimiteur validé
-     * @param object $model Instance du modèle (ex: Etudiant)
+     * @param object $model Instance du modèle (Etudiant ou Absence)
+     * @return array Tableau des stats ['imported' => int, 'doublons' => int]
      */
-    public function importData(string $filePath, array $mapping, string $delimiter, $model): int {
+    public function importData(string $filePath, array $mapping, string $delimiter, $model): array {
         if (!file_exists($filePath)) {
-            return 0;
+            return ['imported' => 0, 'doublons' => 0];
         }
 
         $handle = fopen($filePath, 'r');
         fgetcsv($handle, 0, $delimiter); // Ignorer la première ligne (en-têtes)
 
-        $count = 0;
+        $stats = [
+            'imported' => 0,
+            'doublons' => 0
+        ];
 
         // Boucle sur chaque ligne du CSV
         while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+
+            // 1. Ignorer les lignes complètement vides (ex: ;;;;)
+            if (array_filter($row) === []) continue;
 
             $dataToInsert = [];
             
@@ -121,21 +128,32 @@ class CsvImportService {
                 // On vérifie que le champ BDD n'est pas vide (colonne ignorée)
                 // et que la donnée existe dans la ligne CSV
                 if (!empty($dbField) && isset($row[$colIndex])) {
+                    
                     $val = trim($row[$colIndex]); // Nettoyage des espaces
                     
-                    // On convertit les chaînes vides en NULL si nécessaire, sinon on garde la valeur
+                    // 2. Fix UTF-8 pour Excel (Windows)
+                    if (!mb_detect_encoding($val, 'UTF-8', true)) {
+                        $val = utf8_encode($val);
+                    }
+
+                    // On convertit les chaînes vides en NULL si nécessaire
                     $dataToInsert[$dbField] = $val === '' ? null : $val;
                 }
             }
 
-            // Si on a des données à insérer
+            // 3. Validation générique : On vérifie juste qu'on a extrait des données
+            // On a supprimé la vérif spécifique CNE/NOM pour que ça marche avec les Absences
             if (!empty($dataToInsert)) {
                 
-                // Insertion via le modèle
-                // Le modèle Etudiant renvoie true si succès, false si doublon (CNE)
                 try {
-                    if ($model->create($dataToInsert)) {
-                        $count++;
+                    // On passe le tableau complet au Model
+                    // Le Model doit retourner TRUE (succès), FALSE (erreur) ou NULL (doublon)
+                    $result = $model->create($dataToInsert);
+
+                    if ($result === true) {
+                        $stats['imported']++;
+                    } elseif ($result === null) {
+                        $stats['doublons']++;
                     }
                 } catch (Exception $e) {
                     // On continue l'import même si une ligne échoue
@@ -145,6 +163,6 @@ class CsvImportService {
         }
 
         fclose($handle);
-        return $count;
+        return $stats;
     }
 }

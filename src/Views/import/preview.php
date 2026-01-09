@@ -2,80 +2,56 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Aperçu de l'importation</title>
+    <title>Aperçu de l'import</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-light">
 
-<div class="container mt-5 mb-5">
+<?php require_once __DIR__ . '/../layouts/main.php'; ?>
+
+<div class="container mt-5">
     <div class="card shadow">
-        <div class="card-header bg-warning text-dark">
-            <h4 class="mb-0">Aperçu avant validation</h4>
+        <div class="card-header bg-primary text-white">
+            <h3><i class="fas fa-table"></i> Aperçu avant import</h3>
         </div>
         <div class="card-body">
-            
             <div class="alert alert-info">
-                Voici un extrait des <strong>5 premières lignes</strong> telles qu'elles seront enregistrées.
-                <br>Si cela vous semble correct, validez l'importation en bas de page.
+                <i class="fas fa-info-circle"></i> Voici les 5 premières lignes. Vérifiez que les colonnes (CNE, Nom...) sont bien alignées.
             </div>
-
+            
             <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover align-middle">
+                <table class="table table-bordered table-striped table-sm">
                     <thead class="table-dark">
                         <tr>
-                            <?php foreach ($finalMapping as $dbCol): ?>
-                                <?php if(!empty($dbCol)): ?>
-                                    <th><?= ucfirst($dbCol) ?></th>
-                                <?php endif; ?>
+                            <?php foreach ($previewData[0] as $colName => $value): ?>
+                                <th><?= htmlspecialchars($colName) ?></th>
                             <?php endforeach; ?>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($previewRows as $row): ?>
-                        <tr>
-                            <?php foreach ($finalMapping as $csvIndex => $dbCol): ?>
-                                <?php if(!empty($dbCol)): ?>
-                                    <td>
-                                        <?php 
-                                            // On récupère la valeur ou on met un tiret si vide
-                                            $val = $row[$csvIndex] ?? ''; 
-                                            
-                                            // Sécurité visuelle : ne pas afficher les mots de passe si mappés
-                                            if ($dbCol === 'password') {
-                                                echo '<em>(Généré auto)</em>';
-                                            } else {
-                                                echo htmlspecialchars($val); 
-                                            }
-                                        ?>
-                                    </td>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tr>
+                        <?php foreach ($previewData as $row): ?>
+                            <tr>
+                                <?php foreach ($row as $value): ?>
+                                    <td><?= htmlspecialchars($value) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
 
-            <form action="/import/process" method="POST" class="mt-4">
+            <form action="<?= BASE_URL ?>/import/process" method="POST">
                 
-                <input type="hidden" name="delimiter" value="<?= htmlspecialchars($delimiter) ?>">
-                
-                <?php foreach ($finalMapping as $index => $col): ?>
-                    <input type="hidden" name="mapping[<?= $index ?>]" value="<?= htmlspecialchars($col) ?>">
-                <?php endforeach; ?>
+                <input type="hidden" name="mapping" value="<?= htmlspecialchars(json_encode($mapping)) ?>">
 
-                <?php if (isset($saveConfig) && $saveConfig): ?>
-                    <input type="hidden" name="save_config" value="1">
-                    <input type="hidden" name="config_name" value="<?= htmlspecialchars($configName) ?>">
-                <?php endif; ?>
-
-                <div class="d-flex justify-content-between">
-                    <a href="javascript:history.back()" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Corriger le mapping
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="<?= BASE_URL ?>/import" class="btn btn-warning">
+                        <i class="fas fa-arrow-left"></i> Annuler et Corriger
                     </a>
-                    
-                    <button type="submit" class="btn btn-success btn-lg">
-                        Confirmer et Importer
+
+                    <button type="submit" class="btn btn-success">
+                        Confirmer et Importer <i class="fas fa-check"></i>
                     </button>
                 </div>
             </form>

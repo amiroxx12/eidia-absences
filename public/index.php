@@ -23,27 +23,22 @@ spl_autoload_register(function ($class) {
 // ============================================================
 
 // On demande à PHP : "Dans quel dossier physique suis-je ?"
-// Résultat attendu : /eidia-absences/public
 $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
 
 // On demande à PHP : "Quelle est l'URL demandée ?"
-// Résultat attendu : /eidia-absences/public/ ou /eidia-absences/public/login
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Correction Windows/Mac (On remplace les antislashs par des slashs)
+// Correction Windows/Mac
 $scriptDir = str_replace('\\', '/', $scriptDir);
 
 // --- LE CALCUL ---
-
-// Si l'URL commence par le dossier du script, on enlève ce dossier
-// Ex: /eidia-absences/public/login - /eidia-absences/public = /login
 if (stripos($requestUri, $scriptDir) === 0) {
     $path = substr($requestUri, strlen($scriptDir));
 } else {
     $path = $requestUri;
 }
 
-// Nettoyage final : on vire '/index.php' et les slashs de fin
+// Nettoyage final
 $path = str_replace('/index.php', '', $path);
 $path = rtrim($path, '/');
 
@@ -56,15 +51,30 @@ if ($path === '') {
 // 4. LISTE DES ROUTES
 // ============================================================
 $routes = [
+    // Auth
     '/' => ['App\Controllers\AuthController', 'login'],
     '/login' => ['App\Controllers\AuthController', 'login'],
     '/logout' => ['App\Controllers\AuthController', 'logout'],
+    
+    // Dashboard
     '/dashboard' => ['App\Controllers\DashboardController', 'index'],
+    
+    // Phase 2 : Import Etudiants
     '/import' => ['App\Controllers\ImportController', 'index'],
     '/import/upload' => ['App\Controllers\ImportController', 'upload'],
     '/import/preview' => ['App\Controllers\ImportController', 'preview'],
     '/import/process' => ['App\Controllers\ImportController', 'process'],
+    
+    // Phase 3 : Import Absences (NOUVEAU)
+    '/import/absences' => ['App\Controllers\ImportController', 'uploadAbsences'],
+    '/import/preview-absences' => ['App\Controllers\ImportController', 'previewAbsences'],
+    '/import/process-absences' => ['App\Controllers\ImportController', 'processAbsences'],
+    
+    // Gestion Etudiants
     '/students' => ['App\Controllers\StudentController', 'index'],
+    '/students/delete' => ['App\Controllers\StudentController', 'delete'],
+    '/students/details' => ['App\Controllers\StudentController', 'details'],
+    // '/students/details' => ['App\Controllers\StudentController', 'details'], // À décommenter quand la méthode sera créée
 ];
 
 // ============================================================
@@ -79,18 +89,19 @@ if (array_key_exists($path, $routes)) {
         if (method_exists($controller, $methodName)) {
             $controller->$methodName();
         } else {
-            die("Erreur : Méthode $methodName introuvable.");
+            die("Erreur : Méthode $methodName introuvable dans $controllerName.");
         }
     } else {
         die("Erreur : Classe $controllerName introuvable. Vérifie le namespace et le nom du fichier.");
     }
 } else {
-    // Debuggage : On affiche exactement ce qui a merdé
+    // Debuggage 404
     http_response_code(404);
     echo "<h1>404 - Page non trouvée</h1>";
     echo "<ul>";
-    echo "<li>Dossier détecté (ScriptDir) : <strong>$scriptDir</strong></li>";
-    echo "<li>URL demandée (RequestURI) : <strong>$requestUri</strong></li>";
-    echo "<li>Route calculée (Path) : <strong>[$path]</strong></li>";
+    echo "<li>Dossier détecté : <strong>$scriptDir</strong></li>";
+    echo "<li>URL demandée : <strong>$requestUri</strong></li>";
+    echo "<li>Route calculée : <strong>[$path]</strong></li>";
     echo "</ul>";
+    echo "<p>Vérifiez que la route est bien déclarée dans le tableau <code>\$routes</code> de public/index.php</p>";
 }

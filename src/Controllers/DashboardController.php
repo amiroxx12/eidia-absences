@@ -1,14 +1,35 @@
 <?php
+namespace App\Controllers;
 
-require_once __DIR__ . '/../Services/AuthService.php';
+use App\Models\Etudiant;
+use App\Models\Absence;
 
 class DashboardController {
+
+    private function checkAuth() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: ' . BASE_URL . '/login');
+            exit;
+        }
+    }
+
     public function index() {
-        // si l'utilisateur n'est pas connecté, on le tèje 
-        AuthService::requireLogin();
+        $this->checkAuth();
+        
+        // 1. Instancier les modèles
+        $etudiantModel = new Etudiant();
+        $absenceModel = new Absence();
 
-        $user = AuthService::getCurrentUser();
+        // 2. Récupérer les vrais chiffres et les mettre dans le tableau $stats
+        // C'est ce tableau que la vue dashboard.php utilise ($stats['total_etudiants']...)
+        $stats = [
+            'total_etudiants' => $etudiantModel->countAll(),
+            'total_classes'   => $etudiantModel->countClasses(),
+            'total_absences'  => $absenceModel->countAllGlobal()
+        ];
 
-        require_once __DIR__ . '/../Views/dashboard/index.php';
+        // 3. Passer les données à la vue
+        require_once __DIR__ . '/../Views/dashboard.php';
     }
 }
