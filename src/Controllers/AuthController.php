@@ -2,13 +2,13 @@
 namespace App\Controllers;
 
 use App\Services\AuthService;
+use App\Models\User; // <--- AJOUT : On a besoin du Model pour récupérer le rôle
 
 class AuthController {
     
     public function login() {
         if (session_status() === PHP_SESSION_NONE) session_start();
         
-        // 1. Si déjà connecté, on envoie au Dashboard (pas Import)
         if (isset($_SESSION['user_id'])) {
             header('Location: ' . BASE_URL . '/dashboard'); 
             exit;
@@ -16,41 +16,49 @@ class AuthController {
 
         $error = null;
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Nettoyage des entrées
             $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
             $password = $_POST['password'] ?? '';
             
             $authService = new AuthService();
             
-            // On suppose que ta méthode authenticate() vérifie le pass ET remplit $_SESSION['user_id']
+            // On vérifie d'abord l'auth (password OK)
             if ($authService->authenticate($email, $password)) {
                 
-                // 🛡️ SÉCURITÉ CRITIQUE : Protection contre le vol de session
-                // On génère un nouvel ID de session tout en gardant les infos (user_id)
-                session_regenerate_id(true); 
+                // --- MODIFICATION ICI ---
+                // On récupère les infos complètes de l'utilisateur pour la session
+                $userModel = new User();
+                $user = $userModel->findByEmail($email);
 
-                // 2. Redirection vers le Tableau de bord
-                header('Location: ' . BASE_URL . '/dashboard');
-                exit;
+                // Si le compte est désactivé
+                if ($user['is_active'] == 0) {
+                    $error = "Compte désactivé.";
+                } else {
+                    session_regenerate_id(true); 
+
+                    // On stocke les infos vitales
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_name'] = $user['nom'];
+                    $_SESSION['user_role'] = $user['role']; // <--- IMPORTANT
+
+                    header('Location: ' . BASE_URL . '/dashboard');
+                    exit;
+                }
             } else {
                 $error = "Identifiants incorrects.";
             }
         }
         
-        // Affichage de la vue
         require_once __DIR__ . '/../Views/auth/login.php';
     }
 
     public function logout() {
-        // On détruit la session proprement
         if (session_status() === PHP_SESSION_NONE) session_start();
+        // AuthService::logout(); // Si tu as cette méthode, garde-la
         
-        // Si tu as une méthode statique dans AuthService, c'est bien, 
-        // sinon on peut le faire manuellement ici :
-        // $_SESSION = []; session_destroy();
-        AuthService::logout(); 
+        // Nettoyage manuel pour être sûr
+        $_SESSION = [];
+        session_destroy();
 
-        // Redirection vers le login
         header('Location: ' . BASE_URL . '/login');
         exit;
     }

@@ -1,14 +1,8 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Tableau de bord - EIDIA</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="bg-light">
-
-<?php require_once __DIR__ . '/layouts/main.php'; ?>
+<?php 
+// 1. CHARGEMENT DU HEADER
+// Cela inclut : <!DOCTYPE>, <html>, <head> (CSS), <body> et le MENU de navigation intelligent
+require_once __DIR__ . '/layouts/header.php'; 
+?>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -73,17 +67,21 @@
                 <div class="card-header bg-light fw-bold text-dark">Actions</div>
                 <div class="card-body p-2">
                     <div class="d-grid gap-2">
-                        <a href="<?= BASE_URL ?>/import" class="btn btn-sm btn-outline-primary text-start">
-                            <i class="fas fa-file-import me-2"></i> Étudiants
-                        </a>
-                        
-                        <a href="<?= BASE_URL ?>/import/absences" class="btn btn-sm btn-outline-danger text-start">
-                            <i class="fas fa-calendar-times me-2"></i> Import Absences
-                        </a>
-
-                        <a href="<?= BASE_URL ?>/students" class="btn btn-sm btn-outline-dark text-start">
+                        <a href="<?= BASE_URL ?>/students" class="btn btn-sm btn-outline-primary text-start">
                             <i class="fas fa-list me-2"></i> Liste Étudiants
                         </a>
+                        
+                        <?php if(isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'operateur'])): ?>
+                            <a href="<?= BASE_URL ?>/import/absences" class="btn btn-sm btn-outline-danger text-start">
+                                <i class="fas fa-calendar-times me-2"></i> Import Absences
+                            </a>
+                        <?php endif; ?>
+
+                        <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
+                             <a href="<?= BASE_URL ?>/import" class="btn btn-sm btn-outline-dark text-start">
+                                <i class="fas fa-file-import me-2"></i> Import CSV Étudiants
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -103,5 +101,9 @@
     </div>
 </div>
 
-</body>
-</html>
+<?php 
+// 3. CHARGEMENT DU FOOTER
+// C'est CRUCIAL : c'est lui qui contient <script src="bootstrap...js">
+// Sans lui, le menu déroulant du Header ne marchera pas.
+require_once __DIR__ . '/layouts/footer.php'; 
+?>

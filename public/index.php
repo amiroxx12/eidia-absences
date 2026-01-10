@@ -4,6 +4,12 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+} else {
+    die("Erreur critique : Le dossier 'vendor' est introuvable. As-tu lancé 'composer require phpmailer/phpmailer' ?");
+}
+
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/db.php';
 
@@ -19,14 +25,11 @@ spl_autoload_register(function ($class) {
 });
 
 // ============================================================
-// 3. ROUTAGE PHYSIQUE (INDÉPENDANT DE CONFIG.PHP)
+// 3. ROUTAGE PHYSIQUE
 // ============================================================
 
-// On demande à PHP : "Dans quel dossier physique suis-je ?"
 $scriptDir = dirname($_SERVER['SCRIPT_NAME']);
-
-// On demande à PHP : "Quelle est l'URL demandée ?"
-$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); // On ignore les paramètres ?channel=...
 
 // Correction Windows/Mac
 $scriptDir = str_replace('\\', '/', $scriptDir);
@@ -42,13 +45,12 @@ if (stripos($requestUri, $scriptDir) === 0) {
 $path = str_replace('/index.php', '', $path);
 $path = rtrim($path, '/');
 
-// Si c'est vide, c'est la racine
 if ($path === '') {
     $path = '/';
 }
 
 // ============================================================
-// 4. LISTE DES ROUTES
+// 4. LISTE DES ROUTES (UNIFORMISÉE)
 // ============================================================
 $routes = [
     // Auth
@@ -65,22 +67,38 @@ $routes = [
     '/import/preview' => ['App\Controllers\ImportController', 'preview'],
     '/import/process' => ['App\Controllers\ImportController', 'process'],
     
-    // Phase 3 : Import Absences (NOUVEAU)
+    // Phase 3 : Import Absences
+    '/absences' => ['App\Controllers\AbsenceController', 'monthlyView'],
     '/import/absences' => ['App\Controllers\ImportController', 'uploadAbsences'],
-    '/import/preview-absences' => ['App\Controllers\ImportController', 'previewAbsences'],
-    '/import/process-absences' => ['App\Controllers\ImportController', 'processAbsences'],
+    '/import/previewAbsences' => ['App\Controllers\ImportController', 'previewAbsences'],
+    '/import/processAbsences' => ['App\Controllers\ImportController', 'processAbsences'],
+    '/absences/notifyManual' => ['App\Controllers\AbsenceController', 'notifyManual'],
     
     // Gestion Etudiants
     '/students' => ['App\Controllers\StudentController', 'index'],
     '/students/delete' => ['App\Controllers\StudentController', 'delete'],
     '/students/details' => ['App\Controllers\StudentController', 'details'],
-    // '/students/details' => ['App\Controllers\StudentController', 'details'], // À décommenter quand la méthode sera créée
+    
+    // Rapports et Exports
+    '/absences/monthly' => ['App\Controllers\AbsenceController', 'monthlyView'],
+    '/absences/export' => ['App\Controllers\AbsenceController', 'export'],
+
+    // Gestion Utilisateurs (Admin)
+    '/users' => ['App\Controllers\UserController', 'index'],
+    '/users/create' => ['App\Controllers\UserController', 'create'],
+    '/users/delete' => ['App\Controllers\UserController', 'delete'],
+
+    // --- CONFIGURATION (CORRIGÉ) ---
+    '/settings' => ['App\Controllers\SettingsController', 'index'],
+    '/settings/save' => ['App\Controllers\SettingsController', 'save'],
+    '/settings/test' => ['App\Controllers\SettingsController', 'test'], 
 ];
 
 // ============================================================
 // 5. EXÉCUTION
 // ============================================================
 if (array_key_exists($path, $routes)) {
+    // On récupère le Controller et la Méthode via les index 0 et 1
     $controllerName = $routes[$path][0];
     $methodName = $routes[$path][1];
 
@@ -89,19 +107,17 @@ if (array_key_exists($path, $routes)) {
         if (method_exists($controller, $methodName)) {
             $controller->$methodName();
         } else {
-            die("Erreur : Méthode $methodName introuvable dans $controllerName.");
+            die("Erreur : Méthode <strong>$methodName</strong> introuvable dans <strong>$controllerName</strong>.");
         }
     } else {
-        die("Erreur : Classe $controllerName introuvable. Vérifie le namespace et le nom du fichier.");
+        die("Erreur : Classe <strong>$controllerName</strong> introuvable. Vérifie le namespace et le nom du fichier.");
     }
 } else {
     // Debuggage 404
     http_response_code(404);
+    echo "<div style='font-family:sans-serif; text-align:center; margin-top:50px;'>";
     echo "<h1>404 - Page non trouvée</h1>";
-    echo "<ul>";
-    echo "<li>Dossier détecté : <strong>$scriptDir</strong></li>";
-    echo "<li>URL demandée : <strong>$requestUri</strong></li>";
-    echo "<li>Route calculée : <strong>[$path]</strong></li>";
-    echo "</ul>";
-    echo "<p>Vérifiez que la route est bien déclarée dans le tableau <code>\$routes</code> de public/index.php</p>";
+    echo "<p>Route calculée : <strong>" . htmlspecialchars($path) . "</strong></p>";
+    echo "<a href='" . BASE_URL . "/dashboard'>Retour au tableau de bord</a>";
+    echo "</div>";
 }

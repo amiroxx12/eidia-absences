@@ -1,21 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestion des Étudiants</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script>
-        function confirmDelete(id) {
-            if(confirm("Êtes-vous sûr de vouloir supprimer cet étudiant ? Ses absences seront aussi effacées.")) {
-                window.location.href = "<?= BASE_URL ?>/students/delete?id=" + id;
-            }
-        }
-    </script>
-</head>
-<body class="bg-light">
-
-<?php require_once __DIR__ . '/../layouts/main.php'; ?>
+<?php require_once __DIR__ . '/../layouts/header.php'; ?>
 
 <div class="container mt-4">
     
@@ -26,11 +9,13 @@
                 <div class="col-md-3">
                     <select name="classe" class="form-select" onchange="this.form.submit()">
                         <option value="">-- Toutes les classes --</option>
-                        <?php foreach($classes as $c): ?>
-                            <option value="<?= htmlspecialchars($c) ?>" <?= (isset($_GET['classe']) && $_GET['classe'] == $c) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($c) ?>
-                            </option>
-                        <?php endforeach; ?>
+                        <?php if(!empty($classes)): ?>
+                            <?php foreach($classes as $c): ?>
+                                <option value="<?= htmlspecialchars($c) ?>" <?= (isset($_GET['classe']) && $_GET['classe'] == $c) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -45,48 +30,67 @@
                 </div>
 
                 <div class="col-md-3 text-end">
-                    <a href="<?= BASE_URL ?>/import" class="btn btn-success">
-                        <i class="fas fa-file-import"></i> Importer CSV
-                    </a>
+                    <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
+                        <a href="<?= BASE_URL ?>/import" class="btn btn-success">
+                            <i class="fas fa-file-import"></i> Importer CSV
+                        </a>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 text-secondary"><i class="fas fa-user-graduate me-2"></i>Liste des Étudiants</h5>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle mb-0">
-                    <thead class="table-dark">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>Classe</th>
+                            <th class="ps-4">Classe</th>
                             <th>CNE</th>
                             <th>Nom Prénom</th>
+                            <th>CIN Parent</th> 
                             <th>Contact Parent</th>
-                            <th class="text-center">Absences</th> <th class="text-end">Actions</th>
+                            <th class="text-center">Absences</th> 
+                            <th class="text-end pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($etudiants)): ?>
+                        <?php if (empty($students) && empty($etudiants)): ?>
                             <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="fas fa-user-slash fa-2x mb-3"></i><br>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="fas fa-user-slash fa-3x mb-3 text-secondary opacity-50"></i><br>
                                     Aucun étudiant trouvé pour cette recherche.
                                 </td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($etudiants as $etudiant): ?>
+                            <?php $liste = !empty($students) ? $students : ($etudiants ?? []); ?>
+                            
+                            <?php foreach ($liste as $etudiant): ?>
                             <tr>
-                                <td><span class="badge bg-info text-dark"><?= htmlspecialchars($etudiant['classe'] ?? 'N/A') ?></span></td>
-                                <td><code><?= htmlspecialchars($etudiant['cne']) ?></code></td>
+                                <td class="ps-4"><span class="badge bg-light text-dark border"><?= htmlspecialchars($etudiant['classe'] ?? 'N/A') ?></span></td>
+                                <td><code class="text-primary"><?= htmlspecialchars($etudiant['cne']) ?></code></td>
                                 <td class="fw-bold">
                                     <a href="<?= BASE_URL ?>/students/details?cne=<?= $etudiant['cne'] ?>" class="text-decoration-none text-dark">
                                         <?= htmlspecialchars($etudiant['nom']) ?> <?= htmlspecialchars($etudiant['prenom']) ?>
                                     </a>
                                 </td>
                                 <td>
+                                    <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.9em;">
+                                        <?= !empty($etudiant['cin_parent']) ? htmlspecialchars($etudiant['cin_parent']) : '<span class="text-muted fw-normal">-</span>' ?>
+                                    </span>
+                                </td>
+                                <td>
                                     <?php if(!empty($etudiant['telephone_parent'])): ?>
-                                        <i class="fas fa-phone-alt text-success"></i> <?= htmlspecialchars($etudiant['telephone_parent']) ?>
+                                        <div class="d-flex flex-column" style="font-size: 0.9rem;">
+                                            <span><i class="fas fa-phone-alt text-success me-1"></i> <?= htmlspecialchars($etudiant['telephone_parent']) ?></span>
+                                            <?php if(!empty($etudiant['whatsapp_parent'])): ?>
+                                                <small class="text-muted"><i class="fab fa-whatsapp text-success me-1"></i> WhatsApp OK</small>
+                                            <?php endif; ?>
+                                        </div>
                                     <?php else: ?>
                                         <span class="text-muted small">Non renseigné</span>
                                     <?php endif; ?>
@@ -96,11 +100,11 @@
                                     <?php 
                                         $nb = $etudiant['total_absences'] ?? 0;
                                         if ($nb == 0) {
-                                            $badgeClass = 'bg-success'; // Vert
+                                            $badgeClass = 'bg-success'; 
                                         } elseif ($nb <= 3) {
-                                            $badgeClass = 'bg-warning text-dark'; // Orange
+                                            $badgeClass = 'bg-warning text-dark'; 
                                         } else {
-                                            $badgeClass = 'bg-danger'; // Rouge
+                                            $badgeClass = 'bg-danger'; 
                                         }
                                     ?>
                                     <span class="badge <?= $badgeClass ?> rounded-pill" style="min-width: 30px;">
@@ -108,14 +112,21 @@
                                     </span>
                                 </td>
 
-                                <td class="text-end">
-                                    <a href="<?= BASE_URL ?>/students/details?cne=<?= $etudiant['cne'] ?>" class="btn btn-sm btn-outline-primary" title="Voir les détails">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-
-                                    <button onclick="confirmDelete(<?= $etudiant['id'] ?>)" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
+                                <td class="text-end pe-4">
+                                    <div class="btn-group">
+                                        <a href="<?= BASE_URL ?>/students/details?cne=<?= $etudiant['cne'] ?>" class="btn btn-sm btn-outline-primary" title="Voir les détails">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
+                                            <a href="<?= BASE_URL ?>/students/delete?cne=<?= htmlspecialchars($etudiant['cne']) ?>" 
+                                               class="btn btn-sm btn-outline-danger" 
+                                               title="Supprimer"
+                                               onclick="return confirm('⚠️ Attention !\n\nÊtes-vous sûr de vouloir supprimer l\'étudiant <?= htmlspecialchars($etudiant['cne']) ?> ?\nTout son historique sera effacé de manière irréversible.');">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -124,12 +135,10 @@
                 </table>
             </div>
         </div>
-    </div>
-    
-    <div class="mt-2 text-muted small">
-        Total : <strong><?= count($etudiants) ?></strong> étudiants affichés.
+        <div class="card-footer bg-white text-muted small">
+            Affichage des résultats.
+        </div>
     </div>
 </div>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/../layouts/footer.php'; ?>

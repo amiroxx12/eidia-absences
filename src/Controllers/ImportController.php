@@ -2,20 +2,22 @@
 namespace App\Controllers;
 
 use App\Services\CsvImportService;
+use App\Services\NotificationService;
 use App\Models\Etudiant;
-use App\Models\Absence; // <--- Ajout du modèle Absence
+use App\Models\Absence;
+use App\Models\Settings;
 
 class ImportController {
-    
-    // Config pour les étudiants
+
+    // Champs autorisés pour les étudiants (Phase 2)
     private $authorizedColumns = [
         'cne', 'nom', 'prenom', 'email', 'telephone', 'classe',            
-        'email_parent', 'telephone_parent', 'whatsapp_parent', 'nom_parent', 'adresse'
+        'email_parent', 'telephone_parent', 'whatsapp_parent', 'nom_parent', 'cin_parent', 'adresse'
     ];
 
-    // Config pour les absences (Phase 3)
+    // Champs autorisés pour les absences (Phase 3)
     private $absenceColumns = [
-        'etudiant_cne', 'date_seance', 'heure_debut', 'matiere'
+        'etudiant_cne', 'date_seance', 'heure_debut', 'matiere', 'motif'
     ];
 
     private function checkAuth() {
@@ -26,255 +28,135 @@ class ImportController {
         }
     }
 
-    public function index() {
+    private function checkAdmin() {
         $this->checkAuth();
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            $_SESSION['error_message'] = "Accès refusé. Droits Admin requis.";
+            header('Location: ' . BASE_URL . '/dashboard');
+            exit;
+        }
+    }
+
+    private function checkStaff() {
+        $this->checkAuth();
+        if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'operateur'])) {
+            $_SESSION['error_message'] = "Accès refusé. Réservé au personnel.";
+            header('Location: ' . BASE_URL . '/dashboard');
+            exit;
+        }
+    }
+
+    // =========================================================================
+    // PARTIE 1 : IMPORT ÉTUDIANTS
+    // =========================================================================
+    
+    public function index() {
+        $this->checkAdmin();
         require_once __DIR__ . '/../Views/import/upload.php';
     }
 
-    // =========================================================================
-    // PARTIE 1 : GESTION DES ÉTUDIANTS (Phase 2 - Complexe avec Mapping UI)
-    // =========================================================================
-
     public function upload() {
-        $this->checkAuth();
-        // ... (Ton code de nettoyage inchangé) ...
+        $this->checkAdmin();
+        
+        if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+             $this->genericUpload(
+                 'csv_file', 
+                 'csv_import_file', 
+                 '/../Views/import/upload.php', 
+                 $this->authorizedColumns, 
+                 '/../Views/import/mapping.php'
+             );
+             return;
+        }
+        require_once __DIR__ . '/../Views/import/upload.php';
+    }
+    
+    // Méthode générique propre pour gérer l'upload et l'analyse
+    private function genericUpload($fileInputName, $sessionKey, $uploadView, $columns, $mappingView) {
+        $error = null;
+
+        // 1. Vérifier si un fichier a bien été envoyé
+        if (!isset($_FILES[$fileInputName]) || $_FILES[$fileInputName]['error'] !== UPLOAD_ERR_OK) {
+            $error = "Erreur lors du transfert du fichier.";
+            require_once __DIR__ . $uploadView;
+            return;
+        }
+
+        $file = $_FILES[$fileInputName];
+
+        // 2. Vérification de la taille (5 Mo)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            $error = "Fichier trop volumineux (Max 5 Mo).";
+            require_once __DIR__ . $uploadView;
+            return;
+        }
+
+        // 3. Vérification de l'extension
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'csv') {
+            $error = "Format incorrect. Seul le CSV est accepté.";
+            require_once __DIR__ . $uploadView;
+            return;
+        }
+
+        // 4. Déplacement et Analyse
         $uploadDir = __DIR__ . '/../../public/uploads/';
-        // Nettoyage des vieux fichiers temporaires
-        if (is_dir($uploadDir)) {
-            $files = glob($uploadDir . 'temp_import_*.csv');
-            $now = time();
-            foreach ($files as $file) {
-                if (is_file($file) && ($now - filemtime($file) >= 3600)) @unlink($file);
-            }
-        }
-
-        $error = null;
-
-        // Validation standard
-        if($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['csv_file'])) {
-            $error = "Veuillez sélectionner un fichier.";
-        } elseif ($_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-            $error = "Erreur lors du transfert (Code: " . $_FILES['csv_file']['error'] . ")";
-        } else {
-            $file = $_FILES['csv_file'];
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            if(strtolower($ext) !== 'csv') {
-                $error = "Extension invalide. Le fichier doit finir par .csv";
-            }
-            // (Ta vérification MIME ici...)
-        }
-
-        if ($error) {
-            require_once __DIR__ . '/../Views/import/upload.php';
-            return;
-        }
-
-        // Upload physique
         if(!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-        $tmpFilePath = $uploadDir . 'temp_import_' . time() . '_' . bin2hex(random_bytes(4)) . '.csv';
         
-        if (!move_uploaded_file($file['tmp_name'], $tmpFilePath)) {
-            $error = "Impossible d'enregistrer le fichier.";
-            require_once __DIR__ . '/../Views/import/upload.php';
-            return;
-        }
-
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        $_SESSION['csv_import_file'] = $tmpFilePath;
-
-        // Analyse pour le Mapping Visuel
-        $importService = new CsvImportService();
-        try {
-            $analysis = $importService->analyzeHeaders($tmpFilePath, $this->authorizedColumns);
-            
-            $csvHeaders = $analysis['csv_headers'];
-            $suggestedMapping = $analysis['suggested_mapping'];
-            $detectedDelimiter = $analysis['delimiter'];
-            $dbColumns = $this->authorizedColumns; 
-            
-            require_once __DIR__ . '/../Views/import/mapping.php';
-
-        } catch (\Exception $e) {
-            @unlink($tmpFilePath);
-            $error = "Erreur d'analyse : " . $e->getMessage();
-            require_once __DIR__ . '/../Views/import/upload.php';
-        }
-    }
-
-    public function preview() {
-        // ... (Ton code preview inchangé) ...
-        $this->checkAuth();
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
-        if (session_status() === PHP_SESSION_NONE) session_start();
-
-        $filePath = $_SESSION['csv_import_file'] ?? null;
-        $mapping = $_POST['mapping'] ?? [];
-        $delimiter = $_POST['delimiter'] ?? ';';
+        $tmpFilePath = $uploadDir . 'temp_' . time() . '_' . bin2hex(random_bytes(4)) . '.csv';
         
-        if (!$filePath || !file_exists($filePath)) die("Session expirée.");
+        if (move_uploaded_file($file['tmp_name'], $tmpFilePath)) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION[$sessionKey] = $tmpFilePath;
 
-        $handle = fopen($filePath, 'r');
-        fgetcsv($handle, 0, $delimiter);
-        
-        $previewData = [];
-        for ($i = 0; $i < 5; $i++) {
-            $row = fgetcsv($handle, 0, $delimiter);
-            if ($row !== false) $previewData[] = $row;
-            else break; 
-        }
-        fclose($handle);
-        require_once __DIR__ . '/../Views/import/preview.php';
-    }
+            $importService = new CsvImportService();
+            try {
+                // Analyse avec le Service mis à jour
+                $analysis = $importService->analyzeHeaders($tmpFilePath, $columns);
+                
+                // Variables pour la vue
+                $csvHeaders = $analysis['csv_headers'];
+                $suggestedMapping = $analysis['suggested_mapping']; 
+                $detectedDelimiter = $analysis['delimiter'];
+                $dbColumns = $columns; 
+                
+                require_once __DIR__ . $mappingView;
+                exit;
 
-    public function process() {
-        // ... (Ton code process Étudiants inchangé) ...
-        $this->checkAuth();
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') header('Location: ' . BASE_URL . '/import');
-        if (session_status() === PHP_SESSION_NONE) session_start();
-
-        $filePath = $_SESSION['csv_import_file'] ?? '';
-        if (!file_exists($filePath)) die("Erreur : Fichier introuvable.");
-
-        if (isset($_POST['mapping'])) {
-            $mapping = is_array($_POST['mapping']) ? $_POST['mapping'] : json_decode($_POST['mapping'], true);
+            } catch (\Exception $e) {
+                $error = "Erreur analyse : " . $e->getMessage();
+                @unlink($tmpFilePath); 
+                require_once __DIR__ . $uploadView;
+            }
         } else {
-            $mapping = [];
-        }
-
-        $importService = new CsvImportService();
-        $analysis = $importService->analyzeHeaders($filePath, []); // Juste pour le delimiter
-        $delimiter = $analysis['delimiter'];
-
-        $etudiantModel = new Etudiant(); 
-
-        try {
-            // Import Etudiants
-            $stats = $importService->importData($filePath, $mapping, $delimiter, $etudiantModel);
-            
-            if (file_exists($filePath)) @unlink($filePath);
-            unset($_SESSION['csv_import_file']);
-
-            // Note: $stats est maintenant un array ['imported', 'doublons']
-            $msg = "Import réussi : " . $stats['imported'] . " étudiants ajoutés/mis à jour.";
-            header('Location: ' . BASE_URL . '/students?success=' . urlencode($msg));
-            exit;
-
-        } catch (\Exception $e) {
-            die("Erreur critique : " . $e->getMessage());
+            $error = "Impossible d'enregistrer le fichier.";
+            require_once __DIR__ . $uploadView;
         }
     }
-// =========================================================================
-    // PARTIE 2 : GESTION DES ABSENCES (Phase 3 - Import Complet)
-    // =========================================================================
 
-    /**
-     * Étape 1 : Upload et Analyse des entêtes
-     */
-    public function uploadAbsences() {
-        $this->checkAuth();
-        
-        // Variable pour stocker les erreurs d'upload
-        $error = null;
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_absences'])) {
-            
-            $file = $_FILES['csv_absences'];
-            
-            // 1. Erreur technique upload
-            if ($file['error'] !== UPLOAD_ERR_OK) {
-                $error = "Erreur technique lors du transfert (Code: " . $file['error'] . ")";
-            }
-            // 2. Vérification Extension
-            elseif (strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)) !== 'csv') {
-                $error = "Format refusé : Seuls les fichiers .csv sont acceptés.";
-            }
-            else {
-                // 3. Vérification MIME Type
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mimeType = finfo_file($finfo, $file['tmp_name']);
-                finfo_close($finfo);
-
-                $allowedMimes = [
-                    'text/csv', 'text/plain', 'text/x-csv', 'application/vnd.ms-excel', 
-                    'application/csv', 'application/x-csv', 'text/comma-separated-values',
-                    'text/x-comma-separated-values'
-                ];
-
-                if (!in_array($mimeType, $allowedMimes)) {
-                    $error = "Sécurité : Le fichier semble suspect ($mimeType). Veuillez vérifier qu'il s'agit bien d'un CSV.";
-                }
-            }
-
-            // --- Si aucune erreur de sécurité, on tente le traitement ---
-            if (!$error) {
-                $uploadDir = __DIR__ . '/../../public/uploads/';
-                if(!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-                
-                $tmpFilePath = $uploadDir . 'absences_' . time() . '_' . bin2hex(random_bytes(4)) . '.csv';
-                
-                if (move_uploaded_file($file['tmp_name'], $tmpFilePath)) {
-                    
-                    // Mise en session
-                    if (session_status() === PHP_SESSION_NONE) session_start();
-                    $_SESSION['csv_absences_file'] = $tmpFilePath;
-
-                    // Analyse
-                    $importService = new \App\Services\CsvImportService();
-                    try {
-                        $analysis = $importService->analyzeHeaders($tmpFilePath, $this->absenceColumns);
-                        
-                        // Variables pour la vue suivante
-                        $csvHeaders = $analysis['csv_headers'];
-                        $suggestedMapping = $analysis['suggested_mapping'];
-                        $detectedDelimiter = $analysis['delimiter'];
-                        $dbColumns = $this->absenceColumns; 
-                        
-                        require_once __DIR__ . '/../Views/import/mapping_absences.php';
-                        exit; // On s'arrête là car on a chargé une autre vue
-
-                    } catch (\Exception $e) {
-                        @unlink($tmpFilePath);
-                        $error = "Erreur d'analyse du fichier : " . $e->getMessage();
-                    }
-                } else {
-                    $error = "Impossible d'enregistrer le fichier sur le serveur (Problème de permissions ?).";
-                }
-            }
-        }
-        
-        // S'il y a une erreur (ou si c'est le premier chargement), on affiche la vue d'upload
-        // La vue aura accès à la variable $error
-        require_once __DIR__ . '/../Views/import/upload_absences.php';
-    }
-
-    /**
-     * Étape 2 : Prévisualisation (Intermédiaire)
-     */
-    public function previewAbsences() {
-        $this->checkAuth();
+    // AJOUT DE LA MÉTHODE PREVIEW (Pour les étudiants)
+    public function preview() {
+        $this->checkAdmin();
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . BASE_URL . '/import/absences');
+            header('Location: ' . BASE_URL . '/import');
             exit;
         }
 
-        $filePath = $_SESSION['csv_absences_file'] ?? '';
-        if (!file_exists($filePath)) die("Fichier expiré.");
-
-        // On récupère le mapping choisi par l'utilisateur
+        $filePath = $_SESSION['csv_import_file'] ?? '';
         $mapping = $_POST['mapping'] ?? [];
         $delimiter = $_POST['delimiter'] ?? ';';
 
-        // On lit les 5 premières lignes pour montrer à quoi ça ressemble
+        if (!file_exists($filePath)) die("Fichier expiré ou introuvable.");
+
         $handle = fopen($filePath, 'r');
-        fgetcsv($handle, 0, $delimiter); // On saute l'entête
+        fgetcsv($handle, 0, $delimiter); // Sauter l'en-tête
         
         $previewData = [];
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $row = fgetcsv($handle, 0, $delimiter);
-            if ($row !== false) {
-                // On reconstruit une ligne "propre" basée sur le mapping
+            if ($row) {
                 $cleanRow = [];
                 foreach ($mapping as $colIndex => $dbField) {
                     if (!empty($dbField) && isset($row[$colIndex])) {
@@ -282,20 +164,69 @@ class ImportController {
                     }
                 }
                 if (!empty($cleanRow)) $previewData[] = $cleanRow;
-            } else {
-                break;
             }
         }
         fclose($handle);
-
-        require_once __DIR__ . '/../Views/import/preview_absences.php';
+        
+        // On passe les variables à la vue preview.php
+        require_once __DIR__ . '/../Views/import/preview.php';
     }
 
-    /**
-     * Étape 3 : Traitement final (Insertion BDD)
-     */
-    public function processAbsences() {
-        $this->checkAuth();
+    // CORRECTION DE LA MÉTHODE PROCESS (Pour les étudiants)
+    public function process() {
+        $this->checkAdmin();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+        
+        $filePath = $_SESSION['csv_import_file'] ?? '';
+        if (!file_exists($filePath)) die("Erreur : Fichier introuvable.");
+
+        // CORRECTION : On décode le JSON si c'est une chaîne, sinon on prend le tableau
+        $mapping = $_POST['mapping'] ?? [];
+        if (is_string($mapping)) {
+            $mapping = json_decode($mapping, true);
+        }
+        
+        $importService = new CsvImportService();
+        try {
+            $analysis = $importService->analyzeHeaders($filePath, []);
+            $delimiter = $analysis['delimiter'];
+            
+            $model = new Etudiant();
+            // Maintenant $mapping est garanti d'être un array
+            $stats = $importService->importData($filePath, $mapping, $delimiter, $model);
+            
+            @unlink($filePath);
+            unset($_SESSION['csv_import_file']);
+            
+            header('Location: ' . BASE_URL . '/students?success=1');
+            exit;
+        } catch (\Exception $e) {
+            die("Erreur lors du traitement final : " . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // PARTIE 2 : IMPORT ABSENCES
+    // =========================================================================
+
+    public function uploadAbsences() {
+        $this->checkStaff();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_absences'])) {
+            $this->genericUpload(
+                'csv_absences', 
+                'csv_absences_file', 
+                '/../Views/import/upload_absences.php', 
+                $this->absenceColumns, 
+                '/../Views/import/mapping_absences.php'
+            );
+            return;
+        }
+        require_once __DIR__ . '/../Views/import/upload_absences.php';
+    }
+
+    public function previewAbsences() {
+        $this->checkStaff();
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -304,46 +235,193 @@ class ImportController {
         }
 
         $filePath = $_SESSION['csv_absences_file'] ?? '';
-        if (!file_exists($filePath)) die("Erreur : Fichier expiré ou introuvable.");
+        $mapping = $_POST['mapping'] ?? [];
+        $delimiter = $_POST['delimiter'] ?? ';';
 
-        // GESTION DU MAPPING (Venant de la Preview - JSON)
-        if (isset($_POST['mapping'])) {
-            if (!is_array($_POST['mapping'])) {
-                $mapping = json_decode($_POST['mapping'], true);
-            } else {
-                $mapping = $_POST['mapping'];
+        if (!file_exists($filePath)) die("Fichier expiré.");
+
+        $handle = fopen($filePath, 'r');
+        fgetcsv($handle, 0, $delimiter); 
+        
+        $previewData = [];
+        for ($i = 0; $i < 10; $i++) {
+            $row = fgetcsv($handle, 0, $delimiter);
+            if ($row) {
+                $cleanRow = [];
+                foreach ($mapping as $colIndex => $dbField) {
+                    if (!empty($dbField) && isset($row[$colIndex])) {
+                        $cleanRow[$dbField] = $row[$colIndex]; 
+                    }
+                }
+                if (!empty($cleanRow)) $previewData[] = $cleanRow;
             }
-        } else {
-            $mapping = [];
+        }
+        fclose($handle);
+        require_once __DIR__ . '/../Views/import/preview_absences.php';
+    }
+
+    // =========================================================================
+    // PARTIE 2 : IMPORT ABSENCES (AVEC NOTIFICATIONS)
+    // =========================================================================
+
+   // =========================================================================
+    // PARTIE 2 : IMPORT ABSENCES (Version Finale & Corrigée)
+    // =========================================================================
+
+    public function processAbsences() {
+        // 1. Sécurité
+        $this->checkStaff(); 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        // Si on n'est pas en POST, on dégage
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . BASE_URL . '/import/absences');
+            exit;
         }
 
-        // Récupération du délimiteur
+        // 2. Récupération fichier
+        $filePath = $_SESSION['csv_absences_file'] ?? '';
+        if (!file_exists($filePath)) die("Erreur : Fichier introuvable ou session expirée.");
+
+        // Récupération Mapping
+        $mapping = isset($_POST['mapping']) ? (is_array($_POST['mapping']) ? $_POST['mapping'] : json_decode($_POST['mapping'], true)) : [];
+
+        // 3. Initialisation Services
         $importService = new CsvImportService();
+        $notificationService = new NotificationService(); 
+        $etudiantModel = new Etudiant();
+        $absenceModel = new Absence();
+        $settingsModel = new Settings();
+
         $analysis = $importService->analyzeHeaders($filePath, []); 
         $delimiter = $analysis['delimiter'];
 
-        $absenceModel = new Absence();
-
-        try {
-            // Lancement de l'import
-            $stats = $importService->importData($filePath, $mapping, $delimiter, $absenceModel);
-
-            // Nettoyage
-            @unlink($filePath);
-            unset($_SESSION['csv_absences_file']);
-
-            // Feedback
-            $msg = "Import terminé : " . $stats['imported'] . " absences ajoutées.";
-            if ($stats['doublons'] > 0) {
-                $msg .= " (" . $stats['doublons'] . " doublons ignorés)";
+        // Chargement Template Email
+        $templates = $settingsModel->getTemplates();
+        $emailTemplate = null;
+        foreach($templates as $t) {
+            if($t['type'] === 'absence_nouvelle' && $t['channel'] === 'email') {
+                $emailTemplate = $t;
+                break;
             }
-            
-            $_SESSION['flash_message'] = $msg;
-            header('Location: ' . BASE_URL . '/dashboard'); 
-            exit;
-
-        } catch (\Exception $e) {
-            die("Erreur Import Absences : " . $e->getMessage());
         }
+
+        $countImported = 0;
+        $countNotifs = 0;
+
+        // 4. Traitement
+        if (($handle = fopen($filePath, 'r')) !== false) {
+            fgetcsv($handle, 0, $delimiter); // Sauter header
+
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+                
+                $absenceData = [];
+                foreach ($mapping as $csvIndex => $dbColumn) {
+                    if (!empty($dbColumn) && isset($row[$csvIndex])) {
+                        $absenceData[$dbColumn] = trim($row[$csvIndex]);
+                    }
+                }
+
+                // --- FIX ANTI-FANTÔME ---
+                // On vérifie d'abord si on a un CNE et si l'étudiant existe vraiment
+                $cne = $absenceData['etudiant_cne'] ?? null;
+                
+                if (!$cne || !$etudiantModel->findByCne($cne)) {
+                    // Si l'étudiant n'existe pas en base, on ignore cette ligne et on passe à la suivante
+                    continue; 
+                }
+                // ------------------------
+
+                // A. INSERTION
+                if ($absenceModel->create($absenceData)) {
+                    $countImported++;
+                    
+                    // B. LOGIQUE DES SEUILS (5, 10, 15...)
+                    $totalMonth = $absenceModel->countByMonth($cne);
+
+                    if ($totalMonth > 0 && $totalMonth % 5 == 0) {
+                        
+                        $student = $etudiantModel->findByCne($cne);
+
+                        if ($student) {
+                            
+                            // --- PRÉPARATION DONNÉES ---
+                            $alertLevel = $totalMonth / 5;
+                            $history = $absenceModel->getLastFiveByMonth($cne);
+                            
+                            // HTML Email
+                            $htmlList = "<div style='margin-top:10px; border:1px solid #ddd; border-radius:5px; overflow:hidden;'>";
+                            $htmlList .= "<table style='width:100%; border-collapse:collapse; font-size:14px;'>";
+                            $htmlList .= "<tr style='background:#f8f9fa; text-align:left;'><th style='padding:8px;'>Date</th><th style='padding:8px;'>Matière</th><th style='padding:8px;'>Motif</th></tr>";
+                            
+                            foreach ($history as $abs) {
+                                $dateStr = date('d/m', strtotime($abs['date_seance'])) . ' à ' . date('H:i', strtotime($abs['heure_debut']));
+                                $htmlList .= "<tr>";
+                                $htmlList .= "<td style='padding:8px; border-top:1px solid #eee;'>{$dateStr}</td>";
+                                $htmlList .= "<td style='padding:8px; border-top:1px solid #eee;'>" . htmlspecialchars($abs['matiere']) . "</td>";
+                                $htmlList .= "<td style='padding:8px; border-top:1px solid #eee; color:#dc3545;'>" . htmlspecialchars($abs['motif']) . "</td>";
+                                $htmlList .= "</tr>";
+                            }
+                            $htmlList .= "</table></div>";
+
+                            // --- C. ENVOI EMAIL ---
+                            if (!empty($student['email_parent'])) {
+                                $vars = [
+                                    '{nom_parent}' => $student['nom_parent'] ?? 'Parent',
+                                    '{nom_etudiant}' => $student['nom'] . ' ' . $student['prenom'],
+                                    '{niveau_alerte}' => $alertLevel,
+                                    '{total_absences}' => $totalMonth,
+                                    '{liste_absences}' => $htmlList
+                                ];
+
+                                if ($emailTemplate) {
+                                    $subject = str_replace('{niveau_alerte}', $alertLevel, $emailTemplate['subject'] ?? "Alerte Absences");
+                                    $body = $emailTemplate['body'];
+                                    foreach ($vars as $key => $val) { $body = str_replace($key, $val, $body); }
+                                } else {
+                                    $subject = "URGENT : Seuil d'absences dépassé (Niveau $alertLevel)";
+                                    $body = "<h1>Avertissement Disciplinaire</h1>";
+                                    $body .= "<p>Votre enfant a atteint <strong>$totalMonth absences</strong> ce mois-ci.</p>";
+                                    $body .= $htmlList;
+                                }
+
+                                $resEmail = $notificationService->sendEmail($student['email_parent'], $subject, $body);
+                                if($resEmail['success']) $countNotifs++;
+                            }
+
+                            // --- D. ENVOI WHATSAPP (PRIORISÉ) ---
+                            // On cherche d'abord dans whatsapp_parent, sinon telephone_parent
+                            $phoneParent = !empty($student['whatsapp_parent']) 
+                                           ? $student['whatsapp_parent'] 
+                                           : ($student['telephone_parent'] ?? null);
+
+                            if (!empty($phoneParent)) {
+                                $waMsg = "🚨 *URGENT - EIDIA*\n\n";
+                                $waMsg .= "Votre enfant *{$student['prenom']} {$student['nom']}* a atteint *{$totalMonth} absences* ce mois-ci.\n\n";
+                                $waMsg .= "⚠️ *C'est INADMISSIBLE.*\n";
+                                $waMsg .= "Un rapport disciplinaire détaillé vient d'être envoyé sur votre email.\n\n";
+                                $waMsg .= "Merci de consulter votre boîte mail *IMMÉDIATEMENT*.";
+
+                                $notificationService->sendWhatsApp($phoneParent, $waMsg);
+                            }
+                        }
+                    }
+                }
+            }
+            fclose($handle);
+        }
+
+        @unlink($filePath);
+        unset($_SESSION['csv_absences_file']);
+
+        $msg = "Import terminé : $countImported absences ajoutées.";
+        if ($countNotifs > 0) {
+            $msg .= " ⚠️ $countNotifs alertes envoyées (Email + WhatsApp).";
+        }
+        
+        $_SESSION['flash_message'] = $msg;
+        // Redirection vers la vue mensuelle des absences
+        header('Location: ' . BASE_URL . '/absences/monthly'); 
+        exit;
     }
 }
