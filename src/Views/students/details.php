@@ -90,7 +90,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if(empty($absences)): ?>
+                                <?php if(empty($absences) || !is_array($absences)): ?>
                                     <tr>
                                         <td colspan="4" class="text-center py-5 text-muted">
                                             <i class="fas fa-check-circle fa-3x text-success mb-3"></i><br>
@@ -100,15 +100,39 @@
                                 <?php else: ?>
                                     <?php foreach($absences as $abs): ?>
                                         <?php 
-                                            $date = new DateTime($abs['date_seance']);
-                                            $heure = new DateTime($abs['heure_debut']);
+                                            // 1. SÉCURITÉ : On vérifie que $abs est bien un tableau
+                                            if (!is_array($abs)) continue;
+
+                                            // 2. POLYMORPHISME : On cherche la date sous ses deux noms possibles
+                                            $dateRaw = $abs['date_seance'] ?? $abs['date_absence'] ?? null;
+                                            $heureRaw = $abs['heure_debut'] ?? '00:00';
+                                            $matiere = $abs['matiere'] ?? 'Non renseigné';
+                                            $justifie = $abs['justifie'] ?? 0;
+
+                                            // 3. DATETIME SÉCURISÉ
+                                            $dateAffiche = "Date inconnue";
+                                            $heureAffiche = "";
+                                            
+                                            if ($dateRaw) {
+                                                try {
+                                                    $d = new DateTime($dateRaw);
+                                                    $dateAffiche = $d->format('d/m/Y');
+                                                } catch (Exception $e) { $dateAffiche = $dateRaw; }
+                                            }
+
+                                            if ($heureRaw) {
+                                                try {
+                                                    $h = new DateTime($heureRaw);
+                                                    $heureAffiche = $h->format('H:i');
+                                                } catch (Exception $e) { $heureAffiche = $heureRaw; }
+                                            }
                                         ?>
                                         <tr>
-                                            <td><strong><?= $date->format('d/m/Y') ?></strong></td>
-                                            <td><?= $heure->format('H:i') ?></td>
-                                            <td><?= htmlspecialchars($abs['matiere']) ?></td>
+                                            <td><strong><?= htmlspecialchars($dateAffiche) ?></strong></td>
+                                            <td><?= htmlspecialchars($heureAffiche) ?></td>
+                                            <td><?= htmlspecialchars($matiere) ?></td>
                                             <td>
-                                                <?php if($abs['justifie']): ?>
+                                                <?php if($justifie): ?>
                                                     <span class="badge bg-success">Justifié</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-danger">Injustifié</span>
