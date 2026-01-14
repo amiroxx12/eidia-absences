@@ -2,20 +2,17 @@
 .DS_Store
 Thumbs.db
 
-# Configuration avec mots de passe (NE JAMAIS PUSH ÇA)
+# Configuration SENSIBLE (Ne jamais push ça)
 config/db.php
-config/config.php
+.env
+
+# Configuration STRUCTURELLE (On push ça car c'est sécurisé maintenant)
+# config/config.php  <-- Commenté pour autoriser l'envoi
 
 # Dossiers générés ou temporaires
 vendor/
 node_modules/
 
-# Uploads (on garde le dossier mais pas les fichiers tests)
-public/uploads/*
-!public/uploads/.gitkeep
-
-# Ignorer les vraies configs
-config/db.php
-config/config.php
+# Uploads (on garde la structure des dossiers mais pas les fichiers)
 public/uploads/*
 !public/uploads/.gitkeep

@@ -66,9 +66,7 @@ class SettingsController {
         $channel = $_GET['channel'] ?? '';
         $result = ['success' => false, 'message' => 'Canal non spécifié'];
 
-        // ===========================
         // CAS 1 : TEST EMAIL
-        // ===========================
         if ($channel === 'email') {
             // On prend l'email de la session admin, ou un email par défaut
             $testEmail = $_SESSION['user_email'] ?? 'amirox.ouafi@gmail.com'; 
@@ -79,9 +77,7 @@ class SettingsController {
             $result = $notifier->sendEmail($testEmail, $subject, $body);
         }
 
-        // ===========================
         // CAS 2 : TEST WHATSAPP
-        // ===========================
         elseif ($channel === 'whatsapp') {
             // On récupère le numéro passé dans l'URL (ex: &phone=2126...)
             $phone = $_GET['phone'] ?? null;
@@ -94,9 +90,7 @@ class SettingsController {
             }
         }
 
-        // ===========================
         // RETOUR UTILISATEUR
-        // ===========================
         if ($result['success']) {
             $_SESSION['flash_message'] = "✅ " . $result['message'];
         } else {
@@ -107,4 +101,71 @@ class SettingsController {
         header('Location: ' . BASE_URL . '/settings');
         exit;
     }
+
+    public function generateParentLinks() {
+    $this->checkAdmin();
+    
+    $db = \App\Services\DatabaseService::getInstance()->getConnection();
+    $tokenModel = new \App\Models\ParentToken();
+    $notifier = new \App\Services\NotificationService();
+
+    // 1. Récupérer le template
+    $stmtTpl = $db->query("SELECT * FROM msg_templates WHERE type = 'creation_compte' AND channel = 'email' LIMIT 1");
+    $template = $stmtTpl->fetch(\PDO::FETCH_ASSOC);
+
+    // 2. On récupère les parents, mais on inclut le CIN pour vérification
+    // On utilise MAX(cin_parent) pour vérifier s'il y a au moins un CIN renseigné pour ce groupe
+    $sql = "SELECT email_parent, nom_parent, 
+                   GROUP_CONCAT(CONCAT(prenom, ' ', nom) SEPARATOR ', ') as noms_enfants,
+                   MAX(cin_parent) as cin_check,
+                   MIN(id) as first_child_id 
+            FROM etudiants 
+            WHERE email_parent IS NOT NULL AND email_parent != '' 
+            GROUP BY email_parent";
+    
+    $parents = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+
+    $countSuccess = 0;
+    $missingCin = []; // Pour lister ceux qui bloquent
+
+    foreach ($parents as $p) {
+        // --- EDGE CASE : VERIFICATION DU CIN ---
+        if (empty($p['cin_check'])) {
+            $missingCin[] = "<strong>" . $p['nom_parent'] . "</strong> (Enfants: " . $p['noms_enfants'] . ")";
+            continue; // On n'envoie PAS de mail
+        }
+
+        // Vérifier si un token valide existe déjà pour éviter le harcèlement
+        $checkToken = $db->prepare("SELECT id FROM parent_tokens WHERE email_parent = :email AND is_used = 0 AND expires_at > NOW() LIMIT 1");
+        $checkToken->execute([':email' => $p['email_parent']]);
+        if ($checkToken->fetch()) continue;
+
+        // A. Générer le token
+        $token = $tokenModel->create($p['first_child_id'], $p['email_parent']);
+        $magicLink = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . "/parent/verify?token=" . $token;
+
+        // B. Préparer le message
+        $body = $template['body'];
+        $body = str_replace('{nom_parent}', $p['nom_parent'], $body);
+        $body = str_replace('{nom_etudiant}', $p['noms_enfants'], $body);
+        $body = str_replace('{lien_acces}', $magicLink, $body);
+
+        // C. Envoi réel
+        $res = $notifier->sendEmail($p['email_parent'], $template['subject'], $body);
+        if ($res['success']) $countSuccess++;
+    }
+
+    // --- GESTION DES MESSAGES DE RETOUR ---
+    $_SESSION['flash_message'] = "✅ $countSuccess invitations envoyées avec succès.";
+
+    if (!empty($missingCin)) {
+        // On utilise error_message pour que ça apparaisse en rouge dans tes settings
+        $_SESSION['error_message'] = "⚠️ <strong>Envoi impossible pour " . count($missingCin) . " parent(s) :</strong><br>Leur CIN est manquant dans la base de données. Veuillez les compléter dans la liste des étudiants :<br><ul class='mb-0'><li>" . implode("</li><li>", $missingCin) . "</li></ul>";
+    }
+
+    header('Location: ' . BASE_URL . '/settings');
+    exit;
+}
+
+
 }

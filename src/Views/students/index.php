@@ -113,18 +113,18 @@
                                 </td>
 
                                 <td class="text-end pe-4">
-                                    <div class="btn-group">
+                                    <div class="d-flex justify-content-end gap-1">
                                         <a href="<?= BASE_URL ?>/students/details?cne=<?= $etudiant['cne'] ?>" class="btn btn-sm btn-outline-primary" title="Voir les détails">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         
                                         <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
-                                            <a href="<?= BASE_URL ?>/students/delete?cne=<?= htmlspecialchars($etudiant['cne']) ?>" 
-                                               class="btn btn-sm btn-outline-danger" 
-                                               title="Supprimer"
-                                               onclick="return confirm('⚠️ Attention !\n\nÊtes-vous sûr de vouloir supprimer l\'étudiant <?= htmlspecialchars($etudiant['cne']) ?> ?\nTout son historique sera effacé de manière irréversible.');">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </a>
+                                            <form action="<?= BASE_URL ?>/students/delete" method="POST" class="d-inline" onsubmit="return confirm('⚠️ ALERTE ⚠️\n\nVous êtes sur le point de supprimer l\'étudiant <?= htmlspecialchars($etudiant['nom']) ?>.\n\nCeci va effacer :\n1. Sa fiche étudiant\n2. TOUTES ses absences dans TOUS les mois\n\nÊtes-vous sûr ?');">
+                                                <input type="hidden" name="id" value="<?= $etudiant['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer définitivement">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </td>

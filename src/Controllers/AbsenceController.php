@@ -3,9 +3,9 @@ namespace App\Controllers;
 
 use App\Models\Absence;
 use App\Models\Etudiant;
-use App\Models\Settings;                // <--- Nouveau
-use App\Services\NotificationService;   // <--- Nouveau
-use App\Services\CsvImportService;      // <--- Nouveau
+use App\Models\Settings;                
+use App\Services\NotificationService;
+use App\Services\CsvImportService;      
 
 class AbsenceController {
 
@@ -17,9 +17,7 @@ class AbsenceController {
         }
     }
 
-    // =========================================================
-    // VUE MENSUELLE (Existante)
-    // =========================================================
+    // VUE MENSUELLE
     public function monthlyView() {
         $this->checkAuth();
         $absenceModel = new Absence();
@@ -41,7 +39,17 @@ class AbsenceController {
         $m = $parts[0] ?? date('m');
         $y = $parts[1] ?? date('Y');
 
-        $absences = $absenceModel->getAllFromMonth($m, $y);
+        // --- GESTION PAGINATION ---
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $perPage = 20; // 20 absences par page pour l'admin
+
+        // 1. Calcul du total
+        $totalAbsences = $absenceModel->countAllFromMonth($m, $y);
+        $totalPages = ceil($totalAbsences / $perPage);
+
+        // 2. Récupération des données paginées
+        $absences = $absenceModel->getAllFromMonth($m, $y, $page, $perPage);
+        // --------------------------
 
         foreach ($absences as &$abs) {
             $etudiant = $etudiantModel->findByCne($abs['etudiant_cne']);
@@ -49,7 +57,6 @@ class AbsenceController {
                 $abs['nom_complet'] = strtoupper($etudiant['nom']) . ' ' . ucfirst($etudiant['prenom']);
                 $abs['classe'] = $etudiant['classe'];
                 $abs['email_parent'] = $etudiant['email_parent'];
-                // On affiche le tel parent pour info dans la vue
                 $abs['tel_parent'] = $etudiant['whatsapp_parent'] ?? $etudiant['telephone_parent'] ?? '-';
             } else {
                 $abs['nom_complet'] = 'Inconnu (' . $abs['etudiant_cne'] . ')';
@@ -61,9 +68,7 @@ class AbsenceController {
         require_once __DIR__ . '/../Views/absences/monthly.php';
     }
     
-    // =========================================================
     // EXPORT CSV (Existant)
-    // =========================================================
     public function export() {
         $this->checkAuth();
         
@@ -100,69 +105,133 @@ class AbsenceController {
     }
 
     public function notifyManual() {
-        $this->checkAuth();
+        // 1. Sécurité
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') { die("Accès refusé."); }
 
-        // 1. Récupération des paramètres (CNE + MOIS)
-        $cne = $_GET['cne'] ?? null;
-        $monthStr = $_GET['month'] ?? date('m_Y'); // ex: 01_2026
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $idAbsence = $_POST['id'] ?? null;
+            $tableName = $_POST['table'] ?? null; 
 
-        if (!$cne) die("CNE manquant.");
+            if ($idAbsence && $tableName) {
+                $pdo = \App\Services\DatabaseService::getInstance()->getConnection();
 
-        // 2. Initialisation
-        $notificationService = new NotificationService();
-        $etudiantModel = new Etudiant();
-        $absenceModel = new Absence();
+                // 2. On récupère le Numéro WHATSAPP ou TEL
+                $sql = "SELECT a.id, a.date_seance, a.matiere, a.motif, a.heure_debut,
+                        e.nom, e.prenom, e.cne, e.nom_parent, e.cin_parent,
+                        e.whatsapp_parent, e.telephone_parent
+                    FROM `$tableName` a 
+                    LEFT JOIN etudiants e ON a.etudiant_cne COLLATE utf8mb4_unicode_ci = e.cne COLLATE utf8mb4_unicode_ci
+                    WHERE a.id = :id";
+                
+                try {
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([':id' => $idAbsence]);
+                    $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+                    // 3. Choix du numéro (Whatsapp prio, sinon Tel standard)
+                    $phone = !empty($data['whatsapp_parent']) ? $data['whatsapp_parent'] : ($data['telephone_parent'] ?? null);
+
+                    if (!$data) {
+                        $_SESSION['error_message'] = "❌ Absence introuvable.";
+                    } 
+                    elseif (empty($phone)) {
+                        $_SESSION['error_message'] = "❌ Impossible : Aucun numéro de téléphone parent trouvé.";
+                    }
+                    else {
+                        // 4. Préparation Message WhatsApp
+                        $notifier = new NotificationService();
+                        $parentName = !empty($data['nom_parent']) ? $data['nom_parent'] : "Parent";
+
+                        $msg = "🔔 *Alerte EIDIA* \n\n";
+                        $msg .= "Bonjour M./Mme $parentName,\n";
+                        $msg .= "Votre enfant *{$data['prenom']} {$data['nom']}* a été marqué absent le : \n";
+                        $msg .= "📅 " . date('d/m/Y', strtotime($data['date_seance'])) . " à " . substr($data['heure_debut'], 0, 5) . "\n";
+                        $msg .= "📚 Cours : *{$data['matiere']}*\n";
+                        $msg .= "📝 Motif actuel : " . ($data['motif'] ?? 'Non justifié') . "\n\n";
+                        $msg .= "👉 Merci de justifier sur votre espace : " . BASE_URL . "/parent/login";
+
+                        // 5. Envoi via Service
+                        $result = $notifier->sendWhatsApp($phone, $msg);
+
+                        if ($result['success']) {
+                            // Mise à jour BDD
+                            $updateSql = "UPDATE `$tableName` SET statut_notification = 'Notifié (WhatsApp)' WHERE id = :id";
+                            $pdo->prepare($updateSql)->execute([':id' => $idAbsence]);
+                            
+                            $_SESSION['flash_message'] = "✅ WhatsApp envoyé au " . $phone;
+                        } else {
+                            $_SESSION['error_message'] = "❌ Erreur WhatsApp : " . ($result['message'] ?? 'Erreur inconnue');
+                        }
+                    }
+
+                } catch (\PDOException $e) {
+                    $_SESSION['error_message'] = "❌ Erreur SQL : " . $e->getMessage();
+                }
+            }
+        }
         
-        $student = $etudiantModel->findByCne($cne);
-        if (!$student) die("Étudiant introuvable.");
+        // Redirection
+        if (isset($_SERVER['HTTP_REFERER'])) { header('Location: ' . $_SERVER['HTTP_REFERER']); } 
+        else { header('Location: ' . BASE_URL . '/absences/monthly'); }
+        exit;
+    }
 
-        // 3. Calcul des données
-        // On doit parser le mois (ex: 01_2026 -> 01 et 2026)
-        $parts = explode('_', $monthStr);
-        $m = $parts[0];
-        $y = $parts[1];
+//traitement de la justif coté admin
+    public function handleJustificationDecision() {
+        // 1. Démarrage Session
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // On compte le total pour ce mois précis
-        // (Attention: il faut que ta méthode countByMonth accepte des paramètres optionnels m et y, 
-        // sinon elle prend le mois courant. Pour l'instant on suppose mois courant ou que tu adaptes)
-        $totalMonth = $absenceModel->countByMonth($cne); 
-        $history = $absenceModel->getLastFiveByMonth($cne);
-
-        // 4. Construction HTML (Tableau)
-        $htmlList = "<h3>Récapitulatif manuel</h3><ul>";
-        foreach ($history as $abs) {
-            $htmlList .= "<li>" . date('d/m', strtotime($abs['date_seance'])) . " : " . $abs['motif'] . "</li>";
-        }
-        $htmlList .= "</ul>";
-
-        // 5. ENVOI EMAIL
-        if (!empty($student['email_parent'])) {
-            $subject = "Rappel Absences - {$student['nom']} {$student['prenom']}";
-            $body = "<p>Bonjour,</p><p>Ceci est un rappel manuel concernant les absences.</p>";
-            $body .= "<p>Total du mois : <strong>$totalMonth</strong> absences.</p>";
-            $body .= $htmlList;
-            
-            $notificationService->sendEmail($student['email_parent'], $subject, $body);
+        // On vérifie 'user_id'
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: ' . dirname($_SERVER['SCRIPT_NAME']) . '/login');
+            exit;
         }
 
-        // 6. ENVOI WHATSAPP
-        $phoneParent = !empty($student['whatsapp_parent']) 
-                       ? $student['whatsapp_parent'] 
-                       : ($student['telephone_parent'] ?? null);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
 
-        if (!empty($phoneParent)) {
-            $waMsg = "👋 *Bonjour (Rappel EIDIA)*\n\n";
-            $waMsg .= "Nous attirons votre attention sur le dossier de *{$student['prenom']}*.\n";
-            $waMsg .= "Total absences ce mois : *{$totalMonth}*.\n";
-            $waMsg .= "Merci de vérifier vos emails pour le détail.";
-            
-            $notificationService->sendWhatsApp($phoneParent, $waMsg);
+        // 2. Récupération des données
+        $absenceId = $_POST['absence_id'] ?? null;
+        $tableName = $_POST['table_name'] ?? null;
+        $decision  = $_POST['decision'] ?? null;
+
+        if (!$absenceId || !$tableName || !in_array($decision, ['VALIDE', 'REFUSE'])) {
+            die("Données invalides.");
         }
 
-        $_SESSION['flash_message'] = "Notifications manuelles envoyées pour {$student['nom']}.";
-        
-        // Retour à la page précédente
-        header("Location: " . $_SERVER['HTTP_REFERER']);
+        // 3. Nettoyage et Connexion DB
+        $tableName = preg_replace('/[^a-z0-9_]/', '', $tableName);
+        $db = \App\Services\DatabaseService::getInstance()->getConnection();
+
+        // 4. Logique SQL
+        if ($decision === 'VALIDE') {
+            // Validation : On met à jour le statut, on coche "justifié", et on copie le motif
+            $sql = "UPDATE `$tableName` SET 
+                    justification_status = 'VALIDE',
+                    justifie = 1,
+                    motif = COALESCE(justification_motif, motif) 
+                    WHERE id = :id";
+        } else {
+            // Refus : On met à jour le statut, mais ça reste injustifié (0)
+            $sql = "UPDATE `$tableName` SET 
+                    justification_status = 'REFUSE',
+                    justifie = 0
+                    WHERE id = :id";
+        }
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':id' => $absenceId]);
+
+        // 5. Redirection Intelligente
+        // On extrait le mois et l'année du nom de la table (ex: absences_01_2026 -> 01_2026)
+        if (preg_match('/absences_(\d{2})_(\d{4})/', $tableName, $matches)) {
+            $monthParam = $matches[1] . '_' . $matches[2]; 
+            // On redirige vers la vue mensuelle avec un paramètre de succès
+            header("Location: " . dirname($_SERVER['SCRIPT_NAME']) . "/absences/monthly?month=$monthParam&success=1");
+        } else {
+            // Au cas où, retour dashboard
+            header("Location: " . dirname($_SERVER['SCRIPT_NAME']) . "/dashboard");
+        }
         exit;
     }
 }

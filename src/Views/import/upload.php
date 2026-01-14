@@ -1,53 +1,69 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Importer des étudiants</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body class="bg-light">
-
-<?php require_once __DIR__ . '/../layouts/main.php'; ?>
+<?php require_once __DIR__ . '/../layouts/header.php'; ?>
 
 <div class="container mt-5">
+    
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <?= $_SESSION['error_message']; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <?php unset($_SESSION['error_message']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['flash_message'])): ?>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            <?= $_SESSION['flash_message']; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <?php unset($_SESSION['flash_message']); ?>
+        </div>
+    <?php endif; ?>
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0"><i class="fas fa-file-csv"></i> Importer des étudiants (CSV)</h3>
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0"><i class="fas fa-file-csv me-2"></i>Importer des Étudiants</h3>
+                    <p class="mb-0 opacity-75">Fichier CSV requis (UTF-8)</p>
                 </div>
-                <div class="card-body">
+                
+                <div class="card-body p-5">
                     
                     <?php if (isset($error)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="fas fa-exclamation-triangle"></i> <strong>Erreur :</strong> <?= htmlspecialchars($error) ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i><?= htmlspecialchars($error) ?>
                         </div>
                     <?php endif; ?>
 
-                    <p>Sélectionnez un fichier CSV contenant la liste des étudiants. Le système vous aidera ensuite à faire correspondre les colonnes.</p>
-                    
                     <form action="<?= BASE_URL ?>/import/upload" method="POST" enctype="multipart/form-data">
-                        <div class="mb-4">
-                            <label for="csv_file" class="form-label fw-bold">Fichier CSV (.csv)</label>
-                            <input class="form-control form-control-lg" type="file" id="csv_file" name="csv_file" required accept=".csv">
+                        
+                        <div class="mb-4 text-center">
+                            <div class="upload-icon mb-3 text-primary">
+                                <i class="fas fa-cloud-upload-alt fa-4x"></i>
+                            </div>
+                            <label for="csv_file" class="form-label fw-bold">Choisissez votre fichier CSV</label>
+                            <input class="form-control form-control-lg" type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                            <div class="form-text mt-2">
+                                Le fichier doit contenir au minimum : Nom, Prénom, Email Parent, Tél Parent, CIN Parent.
+                            </div>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="<?= BASE_URL ?>/dashboard" class="btn btn-outline-secondary">Annuler</a>
+                        <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                Suivant <i class="fas fa-arrow-right"></i>
+                                <i class="fas fa-arrow-right me-2"></i>Passer à l'étape suivante
                             </button>
                         </div>
                     </form>
-
+                </div>
+                
+                <div class="card-footer bg-light text-center py-3">
+                    <small class="text-muted">
+                        Format attendu : CSV.
+                    </small>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<?php require_once __DIR__ . '/../layouts/footer.php'; ?>

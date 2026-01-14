@@ -27,6 +27,12 @@
                         <i class="fas fa-edit me-2"></i> Modèles de Messages
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-3 px-4 text-secondary" 
+                            id="parents-tab" data-bs-toggle="tab" data-bs-target="#parents" type="button" role="tab">
+                        <i class="fas fa-user-shield me-2"></i> Accès Parents
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -158,6 +164,28 @@
                     </div>
 
                 </div>
+            <div class="tab-pane fade" id="parents" role="tabpanel">
+                <div class="text-center py-4">
+                    <h4 class="mb-3">Génération des liens d'accès</h4>
+                    <p class="text-muted mb-4">
+                        Cette action va générer un <strong>Magic Link</strong> unique pour chaque parent ayant une adresse email valide <br>
+                        et leur envoyer une invitation pour consulter les absences de leur enfant.
+                    </p>
+                    
+                    <div class="alert alert-warning d-inline-block mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Assurez-vous que vos paramètres SMTP sont corrects avant de lancer l'envoi.
+                    </div>
+                    
+                    <div class="mt-2">
+                        <a href="<?= BASE_URL ?>/settings/generateParentLinks" 
+                        class="btn btn-primary btn-lg px-5 shadow-sm"
+                        onclick="return confirm('Voulez-vous vraiment envoyer les invitations à tous les parents ?');">
+                            <i class="fas fa-paper-plane me-2"></i> Lancer l'envoi des invitations
+                        </a>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
     </div>

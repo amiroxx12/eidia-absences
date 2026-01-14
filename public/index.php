@@ -1,5 +1,5 @@
 <?php
-// 1. Config & Debug
+// Pour Debug
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -7,13 +7,13 @@ error_reporting(E_ALL);
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
 } else {
-    die("Erreur critique : Le dossier 'vendor' est introuvable. As-tu lancé 'composer require phpmailer/phpmailer' ?");
+    die("Erreur critique : Le dossier 'vendor' est introuvable.");
 }
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/db.php';
 
-// 2. Autoloader
+// Autoloader
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';
     $base_dir = __DIR__ . '/../src/';
@@ -24,41 +24,31 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// ============================================================
-// 3. ROUTAGE PHYSIQUE
-// ============================================================
+// ROUTAGE
+$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$scriptName = $_SERVER['SCRIPT_NAME'];
 
-$scriptDir = dirname($_SERVER['SCRIPT_NAME']);
-$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); // On ignore les paramètres ?channel=...
-
-// Correction Windows/Mac
-$scriptDir = str_replace('\\', '/', $scriptDir);
-
-// --- LE CALCUL ---
-if (stripos($requestUri, $scriptDir) === 0) {
-    $path = substr($requestUri, strlen($scriptDir));
+if (strpos($requestUri, $scriptName) !== false) {
+    $path = substr($requestUri, strlen($scriptName));
 } else {
-    $path = $requestUri;
+    $scriptDir = dirname($scriptName);
+    $path = substr($requestUri, strlen($scriptDir));
 }
 
-// Nettoyage final
-$path = str_replace('/index.php', '', $path);
-$path = rtrim($path, '/');
+$path = '/' . ltrim($path, '/');
+if ($path === '' || $path === '/') { $path = '/'; }
 
-if ($path === '') {
-    $path = '/';
-}
-
-// ============================================================
-// 4. LISTE DES ROUTES (UNIFORMISÉE)
-// ============================================================
+// 4. LISTE DES ROUTES
 $routes = [
-    // Auth
-    '/' => ['App\Controllers\AuthController', 'login'],
-    '/login' => ['App\Controllers\AuthController', 'login'],
+    // --- ACCÈS PUBLIC (Par défaut = Parents) ---
+    '/' => ['App\Controllers\ParentController', 'showLogin'], 
+    
+    // --- ACCÈS ADMIN (Caché) ---
+    '/admin' => ['App\Controllers\AuthController', 'login'], // <--- C'est ici que tu te connectes maintenant !
+    '/login' => ['App\Controllers\AuthController', 'login'], // On garde pour compatibilité
     '/logout' => ['App\Controllers\AuthController', 'logout'],
     
-    // Dashboard
+    // Dashboard Admin
     '/dashboard' => ['App\Controllers\DashboardController', 'index'],
     
     // Phase 2 : Import Etudiants
@@ -79,26 +69,41 @@ $routes = [
     '/students/delete' => ['App\Controllers\StudentController', 'delete'],
     '/students/details' => ['App\Controllers\StudentController', 'details'],
     
-    // Rapports et Exports
+    // Rapports
     '/absences/monthly' => ['App\Controllers\AbsenceController', 'monthlyView'],
     '/absences/export' => ['App\Controllers\AbsenceController', 'export'],
+    '/absences/decide-justification' => ['App\Controllers\AbsenceController', 'handleJustificationDecision'],
+
+    // Phase 5 : Espace Parents
+    '/parent/verify'       => ['App\Controllers\ParentController', 'verifyLink'],
+    '/parent/check-cin'    => ['App\Controllers\ParentController', 'handleLogin'],
+    '/parent/dashboard'    => ['App\Controllers\ParentController', 'dashboard'],
+    '/parent/set-password' => ['App\Controllers\ParentController', 'showSetPassword'],
+    '/parent/save-password'=> ['App\Controllers\ParentController', 'savePassword'],
+    '/parent/login'        => ['App\Controllers\ParentController', 'showLogin'],
+    '/parent/login/submit' => ['App\Controllers\ParentController', 'handleStandardLogin'],
+    '/parent/justify' => ['App\Controllers\ParentController', 'handleJustification'],
+    '/parent/logout'       => ['App\Controllers\ParentController', 'logout'],
 
     // Gestion Utilisateurs (Admin)
     '/users' => ['App\Controllers\UserController', 'index'],
     '/users/create' => ['App\Controllers\UserController', 'create'],
     '/users/delete' => ['App\Controllers\UserController', 'delete'],
+    '/users/parents' => ['App\Controllers\UserController', 'parents'],
+    '/users/resend-magic-link' => ['App\Controllers\UserController', 'resendMagicLink'],
 
-    // --- CONFIGURATION (CORRIGÉ) ---
+    //Logs
+    '/logs' => ['App\Controllers\LogController', 'index'],
+
+    // Configuration
     '/settings' => ['App\Controllers\SettingsController', 'index'],
     '/settings/save' => ['App\Controllers\SettingsController', 'save'],
     '/settings/test' => ['App\Controllers\SettingsController', 'test'], 
+    '/settings/generateParentLinks' => ['App\Controllers\SettingsController', 'generateParentLinks'],
 ];
 
-// ============================================================
 // 5. EXÉCUTION
-// ============================================================
 if (array_key_exists($path, $routes)) {
-    // On récupère le Controller et la Méthode via les index 0 et 1
     $controllerName = $routes[$path][0];
     $methodName = $routes[$path][1];
 
@@ -107,17 +112,13 @@ if (array_key_exists($path, $routes)) {
         if (method_exists($controller, $methodName)) {
             $controller->$methodName();
         } else {
-            die("Erreur : Méthode <strong>$methodName</strong> introuvable dans <strong>$controllerName</strong>.");
+            die("Erreur : Méthode <strong>$methodName</strong> introuvable.");
         }
     } else {
-        die("Erreur : Classe <strong>$controllerName</strong> introuvable. Vérifie le namespace et le nom du fichier.");
+        die("Erreur : Classe <strong>$controllerName</strong> introuvable.");
     }
 } else {
-    // Debuggage 404
-    http_response_code(404);
-    echo "<div style='font-family:sans-serif; text-align:center; margin-top:50px;'>";
-    echo "<h1>404 - Page non trouvée</h1>";
-    echo "<p>Route calculée : <strong>" . htmlspecialchars($path) . "</strong></p>";
-    echo "<a href='" . BASE_URL . "/dashboard'>Retour au tableau de bord</a>";
-    echo "</div>";
+    // Redirection soft vers la racine si page inconnue
+    header('Location: ' . BASE_URL . '/');
+    exit;
 }

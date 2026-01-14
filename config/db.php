@@ -1,23 +1,22 @@
 <?php
 
-// parametres de connexion (localement) 
-
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'eidia_absences');
-define('DB_USER','root');
-define('DB_PASS', '');
-
+// ⚠️ IMPORTANT : On ne définit PLUS les constantes ici (DB_HOST, etc.).
+// Elles sont désormais chargées depuis le fichier .env via src/config/config.php
 
 try {
-    //creation de l'opjet PDO (PHP Data Object) a lightweight, consistent database access abstraction layer that provides a uniform interface for interacting with various databases in PHP
-    $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=utf8mb4",DB_USER, DB_PASS);
+    // On utilise directement les constantes globales qui ont été chargées par config.php
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    
+    // Création de l'objet PDO
+    $pdo = new PDO($dsn, DB_USER, DB_PASS);
 
-    //config des erreurs
+    // Config des erreurs
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    //config des resultats
+    // Config des résultats par défaut
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
-    // si la connexion échoue, on arrête tout et affiche la raison
-    die("Erreur critique : Impossible de se connecter à la BDD. <br>".$e->getMessage());
+    // En prod, on évite d'afficher $e->getMessage() pour ne pas révéler d'infos sensibles
+    die("Erreur critique : Impossible de se connecter à la BDD.");
 }

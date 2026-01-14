@@ -22,6 +22,7 @@
                             <li>Date (AAAA-MM-JJ)</li>
                             <li>Heure (HH:MM)</li>
                             <li>Matière</li>
+                            <li>Motif</li>
                         </ul>
                     </div>
 

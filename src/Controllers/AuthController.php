@@ -2,7 +2,7 @@
 namespace App\Controllers;
 
 use App\Services\AuthService;
-use App\Models\User; // <--- AJOUT : On a besoin du Model pour récupérer le rôle
+use App\Models\User;
 
 class AuthController {
     
@@ -24,7 +24,6 @@ class AuthController {
             // On vérifie d'abord l'auth (password OK)
             if ($authService->authenticate($email, $password)) {
                 
-                // --- MODIFICATION ICI ---
                 // On récupère les infos complètes de l'utilisateur pour la session
                 $userModel = new User();
                 $user = $userModel->findByEmail($email);
@@ -39,6 +38,8 @@ class AuthController {
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_name'] = $user['nom'];
                     $_SESSION['user_role'] = $user['role']; // <--- IMPORTANT
+
+                    \App\Services\AuditService::log('LOGIN', 'Connexion réussie de ' . $user['email']);
 
                     header('Location: ' . BASE_URL . '/dashboard');
                     exit;

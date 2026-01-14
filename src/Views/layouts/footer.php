@@ -1,12 +1,18 @@
-</div> 
-
-    <footer class="bg-light text-center text-lg-start mt-5 border-top py-3">
+</main> <footer class="bg-white text-center text-lg-start mt-auto border-top py-4">
         <div class="container">
-            <div class="text-center text-muted">
-                <small>
-                    © <?= date('Y') ?> EIDIA Absences - Système de Gestion <br>
-                    Développé avec par l'équipe.
-                </small>
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <div class="text-muted small">
+                        <strong>EIDIA Absences</strong> &copy; <?= date('Y') ?> - Tous droits réservés.
+                    </div>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <ul class="list-inline mb-0">
+                        <li class="list-inline-item"><a href="#" class="text-muted small text-decoration-none">Support</a></li>
+                        <li class="list-inline-item"><span class="text-muted">·</span></li>
+                        <li class="list-inline-item"><a href="#" class="text-muted small text-decoration-none">Mentions Légales</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </footer>
