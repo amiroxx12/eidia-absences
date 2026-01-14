@@ -5,6 +5,7 @@ Thumbs.db
 # Configuration SENSIBLE (Ne jamais push ça)
 config/db.php
 .env
+config/credentials.php
 
 # Configuration STRUCTURELLE (On push ça car c'est sécurisé maintenant)
 # config/config.php  <-- Commenté pour autoriser l'envoi
