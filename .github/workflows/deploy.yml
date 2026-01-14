@@ -28,4 +28,4 @@ jobs:
         target: "/var/www/eidia-absences.com/public_html/"
         
         # Options de nettoyage (Supprime l'ancien code avant de mettre le nouveau)
-        rm: true
+        rm: false
