@@ -3,9 +3,8 @@ namespace App\Controllers;
 
 use App\Models\Absence;
 use App\Models\Etudiant;
-use App\Models\Settings;                
 use App\Services\NotificationService;
-use App\Services\CsvImportService;      
+use App\Services\DatabaseService;
 
 class AbsenceController {
 
@@ -114,7 +113,7 @@ class AbsenceController {
             $tableName = $_POST['table'] ?? null; 
 
             if ($idAbsence && $tableName) {
-                $pdo = \App\Services\DatabaseService::getInstance()->getConnection();
+                $pdo = DatabaseService::getInstance()->getConnection();
 
                 // 2. On récupère le Numéro WHATSAPP ou TEL
                 $sql = "SELECT a.id, a.date_seance, a.matiere, a.motif, a.heure_debut,
@@ -123,7 +122,7 @@ class AbsenceController {
                     FROM `$tableName` a 
                     LEFT JOIN etudiants e ON a.etudiant_cne COLLATE utf8mb4_unicode_ci = e.cne COLLATE utf8mb4_unicode_ci
                     WHERE a.id = :id";
-                
+              
                 try {
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute([':id' => $idAbsence]);
@@ -177,14 +176,14 @@ class AbsenceController {
         exit;
     }
 
-//traitement de la justif coté admin
+    // TRAITEMENT DE LA JUSTIFICATION
     public function handleJustificationDecision() {
         // 1. Démarrage Session
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         // On vérifie 'user_id'
         if (!isset($_SESSION['user_id'])) {
-            header('Location: ' . dirname($_SERVER['SCRIPT_NAME']) . '/login');
+            header('Location: ' . BASE_URL . '/login');
             exit;
         }
 
@@ -201,7 +200,7 @@ class AbsenceController {
 
         // 3. Nettoyage et Connexion DB
         $tableName = preg_replace('/[^a-z0-9_]/', '', $tableName);
-        $db = \App\Services\DatabaseService::getInstance()->getConnection();
+        $db = DatabaseService::getInstance()->getConnection();
 
         // 4. Logique SQL
         if ($decision === 'VALIDE') {
@@ -222,15 +221,14 @@ class AbsenceController {
         $stmt = $db->prepare($sql);
         $stmt->execute([':id' => $absenceId]);
 
-        // 5. Redirection Intelligente
-        // On extrait le mois et l'année du nom de la table (ex: absences_01_2026 -> 01_2026)
+        // 5. Redirection Intelligente (FIXED)
+        // On extrait le mois et l'année du nom de la table
         if (preg_match('/absences_(\d{2})_(\d{4})/', $tableName, $matches)) {
             $monthParam = $matches[1] . '_' . $matches[2]; 
-            // On redirige vers la vue mensuelle avec un paramètre de succès
-            header("Location: " . dirname($_SERVER['SCRIPT_NAME']) . "/absences/monthly?month=$monthParam&success=1");
+            // FIX: Utilisation correcte de BASE_URL
+            header("Location: " . BASE_URL . "/absences/monthly?month=$monthParam&success=1");
         } else {
-            // Au cas où, retour dashboard
-            header("Location: " . dirname($_SERVER['SCRIPT_NAME']) . "/dashboard");
+            header("Location: " . BASE_URL . "/dashboard");
         }
         exit;
     }

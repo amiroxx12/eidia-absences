@@ -1,19 +1,15 @@
 <IfModule mod_rewrite.c>
-    # Sécurité : Empêcher de lister les fichiers du dossier (au cas où)
-    Options -Indexes
-    
-    # Désactiver la négociation de contenu (évite des conflits bizarres)
     Options -MultiViews
-
     RewriteEngine On
-    
-    # ATTENTION : Si tu renommes ton dossier projet, change cette ligne !
-    RewriteBase /eidia-absences/public/
-    
-    # Si le fichier demandé existe physiquement (ex: style.css, image.jpg), on le sert direct
-    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteBase /
+
+    # 1. Empêcher la boucle : Si on demande déjà index.php, on arrête tout.
+    RewriteRule ^index\.php$ - [L]
+
+    # 2. Si le fichier ou dossier demandé existe, on le sert.
     RewriteCond %{REQUEST_FILENAME} !-f
-    
-    # Sinon, on envoie tout vers index.php (ton routeur)
-    RewriteRule ^(.*)$ index.php [QSA,L]
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # 3. Sinon, on envoie tout vers index.php
+    RewriteRule . index.php [QSA,L]
 </IfModule>

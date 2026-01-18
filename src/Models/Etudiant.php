@@ -114,21 +114,25 @@ class Etudiant {
         }
 
         if (!empty($filters['search'])) {
-            $sql .= " AND (nom LIKE :search OR prenom LIKE :search OR cne LIKE :search)";
-            $params[':search'] = '%' . $filters['search'] . '%';
+            // FIX: Utilisation de noms de paramètres uniques
+            $sql .= " AND (nom LIKE :search1 OR prenom LIKE :search2 OR cne LIKE :search3)";
+            
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params[':search1'] = $searchTerm;
+            $params[':search2'] = $searchTerm;
+            $params[':search3'] = $searchTerm;
         }
 
         $sql .= " ORDER BY classe ASC, nom ASC";
+        
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // --- 👇 LE FIX EST ICI : On remet la méthode manquante ---
     public function findAllWithStats($filters = []) {
         return $this->findAll($filters);
     }
-    // ---------------------------------------------------------
 
     public function find($id) {
         $stmt = $this->pdo->prepare("SELECT * FROM etudiants WHERE id = ?");

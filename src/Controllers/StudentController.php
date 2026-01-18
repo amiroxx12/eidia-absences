@@ -46,7 +46,7 @@ class StudentController {
         $this->checkAuth();
         
         $etudiantModel = new Etudiant();
-        $absenceModel = new \App\Models\Absence(); 
+        $absenceModel = new Absence(); 
         
         $filters = [
             'search' => $_GET['search'] ?? '',
@@ -85,9 +85,16 @@ class StudentController {
             die("Étudiant introuvable (CNE: " . htmlspecialchars($cne) . ")");
         }
 
-        $absenceModel = new \App\Models\Absence(); 
-        $absences = $absenceModel->getByEtudiantGlobal($cne);
-        $totalAbsences = count($absences);
+        $absenceModel = new Absence(); 
+        
+        // --- FIX CORRIGÉ ---
+        // On récupère le tableau complet (Data + Total) avec une limite large (500)
+        $result = $absenceModel->getByEtudiantGlobal($cne, 1, 500);
+        
+        // On sépare les données pour que la vue puisse les lire correctement
+        $absences = $result['data'];       
+        $totalAbsences = $result['total']; 
+        // -------------------
 
         require_once __DIR__ . '/../Views/students/details.php';
     }
@@ -108,7 +115,6 @@ class StudentController {
             
             if ($id) {
                 // A. On récupère le CNE via l'ID
-                // MAINTENANT ÇA MARCHE car $this->studentModel existe grâce au constructeur !
                 $studentData = $this->studentModel->find($id);
                 
                 if ($studentData && !empty($studentData['cne'])) {

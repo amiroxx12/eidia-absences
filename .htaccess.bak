@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Si la requête pointe vers un fichier ou dossier existant à la racine, on le sert (ex: robots.txt)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # C'EST ICI QUE CA SE JOUE :
+    # Si l'URL ne contient PAS déjà "public/", alors on redirige vers "public/"
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

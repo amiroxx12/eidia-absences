@@ -82,7 +82,7 @@
                                         <small class="text-muted"><?= htmlspecialchars($abs['classe']) ?></small>
                                     </td>
                                     <td><?= htmlspecialchars($abs['matiere']) ?></td>
-                                    
+                                   
                                     <td class="text-center">
                                         <?php if ($status === 'VALIDE'): ?>
                                             <span class="badge bg-success">Validée</span>
@@ -99,7 +99,7 @@
                                     </td>
 
                                     <td class="text-end pe-4">
-                                        <?php if (($abs['statut_notification'] ?? '') === 'Notifié'): ?>
+                                        <?php if (($abs['statut_notification'] ?? '') === 'Notifié' || strpos(($abs['statut_notification'] ?? ''), 'Notifié') !== false): ?>
                                             <span class="badge bg-success me-2" title="Notification envoyée"><i class="fas fa-check"></i> Notifié</span>
                                         <?php else: ?>
                                             <form action="<?= BASE_URL ?>/absences/notifyManual" method="POST" class="d-inline" onsubmit="return confirm('⚠️ Envoyer une alerte au parent ?');">
@@ -153,15 +153,22 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="row g-0">
-                        <div class="col-md-8 bg-dark text-center py-4 border-end" style="min-height: 60vh;">
+                        <div class="col-md-8 bg-dark text-center py-4 border-end d-flex align-items-center justify-content-center" style="min-height: 60vh;">
                             <?php 
-                                $fileUrl = dirname($_SERVER['SCRIPT_NAME']) . '/uploads/justifications/' . $targetAbsence['justification_file'];
+                                // --- FIX CORRIGÉ : UTILISATION DE BASE_URL ---
+                                $fileUrl = BASE_URL . '/uploads/justifications/' . $targetAbsence['justification_file'];
                                 $ext = pathinfo($targetAbsence['justification_file'], PATHINFO_EXTENSION);
                             ?>
                             <?php if (in_array(strtolower($ext), ['jpg', 'jpeg', 'png'])): ?>
                                 <img src="<?= $fileUrl ?>" style="max-width: 95%; max-height: 75vh;" alt="Justificatif">
                             <?php elseif (strtolower($ext) === 'pdf'): ?>
                                 <embed src="<?= $fileUrl ?>" width="100%" height="600px" type="application/pdf">
+                            <?php else: ?>
+                                <div class="text-white">
+                                    <i class="fas fa-file-download fa-3x mb-3"></i><br>
+                                    Format non prévisualisable.<br>
+                                    <a href="<?= $fileUrl ?>" class="btn btn-light mt-2" download>Télécharger</a>
+                                </div>
                             <?php endif; ?>
                         </div>
                         <div class="col-md-4 p-4 bg-white">

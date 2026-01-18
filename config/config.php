@@ -44,14 +44,12 @@ if (!defined('TWILIO_SID')) define('TWILIO_SID', $_ENV['TWILIO_SID'] ?? '');
 if (!defined('TWILIO_TOKEN')) define('TWILIO_TOKEN', $_ENV['TWILIO_TOKEN'] ?? '');
 if (!defined('TWILIO_FROM')) define('TWILIO_FROM', $_ENV['TWILIO_FROM'] ?? '');
 
+
 // 6. URL
-$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'];
-$scriptDir = dirname($_SERVER['SCRIPT_NAME']); 
-$scriptDir = rtrim($scriptDir, '/\\');
-define('BASE_URL', $protocol . "://" . $host . $scriptDir);
+define('BASE_URL', 'https://eidia-absences.duckdns.org');
 
 // 7. SESSION
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
