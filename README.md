@@ -4,6 +4,9 @@
 
 🫵🏻 **Ce Markdown est écrit pour les développeurs** 🫵🏻 
 
+Séparation des taches : - Amr OUAFI & Akram Loutouate (Backend & Configuration)
+                        - Reda Lahssaini & Sara Tazi (Frontend)
+
 🔗 **Site de Production :** [http://eidia-absences.duckdns.org](http://eidia-absences.duckdns.org)  
 📖 **Documentation Technique :** [Voir la Documentation](http://eidia-absences.duckdns.org/documentation_projet.html)
 
